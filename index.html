@@ -39,7 +39,6 @@ import {
 } from 'firebase/firestore';
 
 // --- Inisialisasi Firebase ---
-// Menggunakan variabel global sesuai instruksi lingkungan eksekusi
 const firebaseConfig = JSON.parse(__firebase_config);
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -47,7 +46,7 @@ const db = getFirestore(app);
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'wcc-booking-app';
 
 // --- Konfigurasi Admin ---
-const ADMIN_PHONE = "628123456789"; // Ganti dengan nomor WhatsApp admin kamu
+const ADMIN_PHONE = "628123456789"; 
 
 // --- Data Paket ---
 const PACKAGES = [
@@ -133,7 +132,6 @@ const App = () => {
     brief: ''
   });
 
-  // 1. Auth Initialization (RULE 3)
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -142,58 +140,38 @@ const App = () => {
         } else {
           await signInAnonymously(auth);
         }
-      } catch (err) {
-        console.error("Auth Error:", err);
-      }
+      } catch (err) { console.error("Auth Error:", err); }
     };
     initAuth();
     const unsubscribe = onAuthStateChanged(auth, setUser);
     return () => unsubscribe();
   }, []);
 
-  // 2. Real-time Data Fetching (RULE 1 & 2)
   useEffect(() => {
     if (!user) return;
-
-    // Path wajib: /artifacts/{appId}/public/data/{collectionName}
     const bookingsCol = collection(db, 'artifacts', appId, 'public', 'data', 'bookings');
-    
-    // onSnapshot untuk update real-time
     const unsubscribe = onSnapshot(bookingsCol, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setBookings(data);
-    }, (error) => {
-      console.error("Firestore Listen Error:", error);
-    });
-
+    }, (error) => { console.error("Firestore Listen Error:", error); });
     return () => unsubscribe();
   }, [user]);
 
-  // Fungsi pengecekan status berdasarkan data dari Firebase
   const getStatus = (day, month, year) => {
     const d = new Date(year, month, day);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
-    // Tanggal yang sudah lewat = Abu-abu (Unavailable)
     if (d < today) return 0;
-
-    // Cek di data bookings
     const dateStr = d.toDateString();
     const isBooked = bookings.some(b => {
-      // Pastikan data timestamp ada sebelum konversi
       if (b.tanggalAcaraTimestamp) {
         const bookedDate = b.tanggalAcaraTimestamp.toDate ? b.tanggalAcaraTimestamp.toDate() : new Date(b.tanggalAcaraTimestamp);
         return bookedDate.toDateString() === dateStr;
       }
       return false;
     });
-    
-    if (isBooked) return 2; // Merah (Booked)
-    return 1; // Hijau (Available)
+    if (isBooked) return 2;
+    return 1;
   };
 
   const dateStrip = useMemo(() => {
@@ -218,21 +196,13 @@ const App = () => {
   };
 
   const nextMonth = () => {
-    if (viewMonth === 11) {
-      setViewMonth(0);
-      setViewYear(viewYear + 1);
-    } else {
-      setViewMonth(viewMonth + 1);
-    }
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(viewYear + 1); }
+    else { setViewMonth(viewMonth + 1); }
   };
 
   const prevMonth = () => {
-    if (viewMonth === 0) {
-      setViewMonth(11);
-      setViewYear(viewYear - 1);
-    } else {
-      setViewMonth(viewMonth - 1);
-    }
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(viewYear - 1); }
+    else { setViewMonth(viewMonth - 1); }
   };
 
   const togglePackageDetail = (e, pkgId) => {
@@ -243,18 +213,14 @@ const App = () => {
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (!user || isSubmitting) return;
-
     setIsSubmitting(true);
     const selectedPaketObj = PACKAGES.find(p => p.id === formData.paket);
-
     try {
-      // Path wajib untuk simpan data publik
       const bookingsCol = collection(db, 'artifacts', appId, 'public', 'data', 'bookings');
-      
       await addDoc(bookingsCol, {
         namaPasangan: formData.namaPasangan,
         tanggalAcaraText: formatID(selectedDate),
-        tanggalAcaraTimestamp: selectedDate, // Firestore handles JS Date
+        tanggalAcaraTimestamp: selectedDate,
         waktuAcara: formData.waktuAcara,
         lokasiAcara: formData.lokasiAcara,
         paket: selectedPaketObj?.name || formData.paket,
@@ -262,110 +228,70 @@ const App = () => {
         userId: user.uid,
         createdAt: serverTimestamp()
       });
-
-      // Format pesan WhatsApp
-      const message = `*NEW BOOKING WCC REQUEST* 📸✨
-
-Halo Admin Eternal Lens! Saya ingin melakukan booking jadwal:
-
-*Detail Acara:*
-📅 Tanggal: ${formatID(selectedDate)}
-💍 Pasangan: ${formData.namaPasangan}
-🕒 Waktu: ${formData.waktuAcara}
-📍 Lokasi: ${formData.lokasiAcara}
-
-*Paket Pilihan:*
-📦 Paket: ${selectedPaketObj ? selectedPaketObj.name : formData.paket}
-💰 Harga: ${selectedPaketObj ? selectedPaketObj.price : '-'}
-
-*Brief / Catatan:*
-📝 ${formData.brief || 'Tidak ada catatan tambahan.'}
-
-Mohon konfirmasinya ya kak!`;
-
-      const waUrl = `https://wa.me/${ADMIN_PHONE}?text=${encodeURIComponent(message)}`;
-      window.open(waUrl, '_blank');
-      
-      // Reset & Close
+      const message = `*NEW BOOKING WCC REQUEST* 📸✨\n\nTanggal: ${formatID(selectedDate)}\n💍 Pasangan: ${formData.namaPasangan}\n🕒 Waktu: ${formData.waktuAcara}\n📍 Lokasi: ${formData.lokasiAcara}\n📦 Paket: ${selectedPaketObj?.name || formData.paket}\n📝 Brief: ${formData.brief || '-'}`;
+      window.open(`https://wa.me/${ADMIN_PHONE}?text=${encodeURIComponent(message)}`, '_blank');
       setShowFormModal(false);
       setIsSubmitting(false);
-      setFormData({
-        namaPasangan: '',
-        waktuAcara: '',
-        lokasiAcara: '',
-        paket: 'signature',
-        brief: ''
-      });
-
-    } catch (error) {
-      console.error("Booking Error:", error);
-      setIsSubmitting(false);
-    }
+      setFormData({ namaPasangan: '', waktuAcara: '', lokasiAcara: '', paket: 'signature', brief: '' });
+    } catch (error) { console.error("Booking Error:", error); setIsSubmitting(false); }
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFCFB] text-slate-800 font-sans selection:bg-rose-100 pb-12 overflow-x-hidden">
-      {/* Navigation */}
-      <header className="bg-white border-b border-slate-100 sticky top-0 z-40 px-6 py-4 flex justify-between items-center shadow-sm">
+    <div className="min-h-screen bg-[#FDFCFB] text-slate-800 font-sans selection:bg-rose-100 pb-12 overflow-x-hidden antialiased">
+      {/* Header - Mobile Optimized */}
+      <header className="bg-white/90 backdrop-blur-md border-b border-slate-100 sticky top-0 z-40 px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center shadow-sm">
         <div className="flex items-center gap-2">
-          <div className="w-10 h-10 bg-rose-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-rose-200">
-            <Camera size={20} />
+          <div className="w-9 h-9 sm:w-10 sm:h-10 bg-rose-500 rounded-xl flex items-center justify-center text-white shadow-lg">
+            <Camera size={18} />
           </div>
-          <h1 className="text-xl font-bold tracking-tight italic uppercase">ETERNAL<span className="text-rose-500">LENS</span></h1>
+          <h1 className="text-lg sm:text-xl font-bold tracking-tight italic">ETERNAL<span className="text-rose-500">LENS</span></h1>
         </div>
-        <div className="flex items-center gap-4">
-          <button className="text-rose-500 hover:scale-110 transition-transform"><Instagram size={20}/></button>
-        </div>
+        <button className="p-2 text-rose-500 active:scale-90 transition-transform"><Instagram size={20}/></button>
       </header>
 
-      <main className="max-w-2xl mx-auto px-6 py-8 sm:py-12">
-        {/* Hero Section */}
-        <section className="mb-10 text-center">
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
+        {/* Hero */}
+        <section className="mb-8 sm:mb-10 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-rose-50 text-rose-600 text-[10px] font-bold rounded-full mb-4 tracking-widest uppercase border border-rose-100">
-            <Sparkles size={10} /> Real-time Cloud Booking
+            <Sparkles size={10} /> Real-time Booking
           </div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mb-2 tracking-tight">
+          <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 mb-2 tracking-tight px-2">
             Abadikan Momen Terindahmu
           </h2>
-          <p className="text-slate-500 text-sm max-w-sm mx-auto">
-            Jadwal terupdate secara real-time. Pilih tanggal tersedia dan amankan slotmu sekarang.
+          <p className="text-slate-500 text-sm max-w-sm mx-auto px-4">
+            Pilih tanggal pernikahanmu dan amankan slot dokumentasi cinematic kamu.
           </p>
         </section>
 
-        {/* 7 Days Strip */}
+        {/* 7 Days Strip - Snap Scroll Optimized */}
         <section className="mb-8">
           <div className="flex justify-between items-center mb-4 px-1">
-            <h3 className="font-bold text-slate-800">Tersedia Minggu Ini</h3>
+            <h3 className="font-bold text-slate-800 text-sm sm:text-base">Tersedia Minggu Ini</h3>
             <button 
               onClick={() => setShowCalendarModal(true)}
-              className="text-rose-500 text-xs font-bold flex items-center gap-1 hover:underline uppercase tracking-wider"
+              className="text-rose-500 text-[11px] font-bold flex items-center gap-1 uppercase tracking-wider"
             >
               <CalendarIcon size={14} /> LIHAT KALENDER
             </button>
           </div>
           
-          <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar px-1">
+          <div className="flex gap-3 overflow-x-auto pb-4 px-1 no-scrollbar snap-x snap-mandatory">
             {dateStrip.map((date, idx) => {
               const status = getStatus(date.getDate(), date.getMonth(), date.getFullYear());
               const isSelected = selectedDate.toDateString() === date.toDateString();
-              
               return (
                 <button
                   key={`strip-${idx}`}
                   onClick={() => handleDateClick(date)}
-                  className={`flex-shrink-0 w-16 h-24 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 transform active:scale-95 border-2 ${
-                    isSelected 
-                    ? 'border-rose-500 bg-rose-500 text-white shadow-lg' 
-                    : 'border-transparent bg-white shadow-sm'
+                  className={`flex-shrink-0 w-16 h-24 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 transform active:scale-95 border-2 snap-center ${
+                    isSelected ? 'border-rose-500 bg-rose-500 text-white shadow-lg' : 'border-transparent bg-white shadow-sm'
                   }`}
                 >
                   <span className={`text-[10px] font-bold uppercase mb-1 ${isSelected ? 'text-rose-100' : 'text-slate-400'}`}>
                     {new Intl.DateTimeFormat('id-ID', { weekday: 'short' }).format(date)}
                   </span>
                   <span className="text-lg font-black">{date.getDate()}</span>
-                  <div className={`mt-2 w-1.5 h-1.5 rounded-full ${
-                    status === 2 ? 'bg-red-400 animate-pulse' : status === 1 ? 'bg-emerald-400' : 'bg-slate-200'
-                  }`} />
+                  <div className={`mt-2 w-1.5 h-1.5 rounded-full ${status === 2 ? 'bg-red-400 animate-pulse' : status === 1 ? 'bg-emerald-400' : 'bg-slate-200'}`} />
                 </button>
               );
             })}
@@ -373,30 +299,30 @@ Mohon konfirmasinya ya kak!`;
         </section>
 
         {/* Legend */}
-        <div className="flex justify-center gap-6 mb-12 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-          <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-400" /> Tersedia</div>
-          <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-400" /> Full Booked</div>
-          <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-slate-300" /> No Slot</div>
+        <div className="flex justify-center gap-4 sm:gap-6 mb-10 text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-white/50 py-2 rounded-full border border-slate-100 mx-2">
+          <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Tersedia</div>
+          <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-red-400" /> Booked</div>
+          <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-slate-300" /> No Slot</div>
         </div>
 
-        {/* Features Preview */}
-        <section className="space-y-4">
-          <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white overflow-hidden relative shadow-2xl">
+        {/* Premium Highlights */}
+        <section className="space-y-4 px-1">
+          <div className="bg-slate-900 rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 text-white overflow-hidden relative shadow-xl">
             <div className="relative z-10">
-              <div className="w-12 h-12 bg-rose-500/20 text-rose-500 rounded-2xl flex items-center justify-center mb-6">
-                <Heart fill="currentColor" size={24} />
+              <div className="w-10 h-10 bg-rose-500/20 text-rose-500 rounded-xl flex items-center justify-center mb-4">
+                <Heart fill="currentColor" size={20} />
               </div>
-              <h4 className="text-2xl font-black mb-2 tracking-tight leading-none italic uppercase">Kenangan Digital</h4>
-              <p className="text-slate-400 text-sm mb-6 leading-relaxed font-medium opacity-80">Kami menceritakan kebahagiaanmu lewat lensa yang estetik dan instan.</p>
+              <h4 className="text-xl font-bold mb-2 tracking-tight italic uppercase">Kenangan Digital</h4>
+              <p className="text-slate-400 text-xs sm:text-sm mb-6 leading-relaxed font-medium opacity-80">Kami menceritakan kebahagiaanmu lewat lensa yang estetik dan instan.</p>
               
-              <div className="grid grid-cols-2 gap-4">
-                 <div className="flex items-center gap-3 bg-white/5 p-3 rounded-2xl border border-white/10">
-                    <Zap size={16} className="text-rose-500" />
-                    <span className="text-[10px] font-black uppercase tracking-wider">Fast Edit</span>
+              <div className="grid grid-cols-2 gap-3">
+                 <div className="flex items-center gap-2 bg-white/5 p-2.5 rounded-xl border border-white/10">
+                    <Zap size={14} className="text-rose-500" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider">Fast Edit</span>
                  </div>
-                 <div className="flex items-center gap-3 bg-white/5 p-3 rounded-2xl border border-white/10">
-                    <Smartphone size={16} className="text-rose-500" />
-                    <span className="text-[10px] font-black uppercase tracking-wider">Vertical</span>
+                 <div className="flex items-center gap-2 bg-white/5 p-2.5 rounded-xl border border-white/10">
+                    <Smartphone size={14} className="text-rose-500" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider">Vertical</span>
                  </div>
               </div>
             </div>
@@ -405,28 +331,25 @@ Mohon konfirmasinya ya kak!`;
         </section>
       </main>
 
-      {/* MODAL: Calendar Grid */}
+      {/* MODAL: Calendar - Bottom Sheet on Mobile */}
       {showCalendarModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 shadow-2xl animate-in slide-in-from-bottom-10 border-t border-slate-50">
+          <div className="bg-white w-full max-w-md rounded-t-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl animate-in slide-in-from-bottom-10 border-t border-slate-50 overflow-hidden">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-slate-900">
+              <h3 className="text-lg sm:text-xl font-bold text-slate-900">
                 {new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(new Date(viewYear, viewMonth))}
               </h3>
-              <div className="flex gap-2">
-                <button onClick={prevMonth} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><ChevronLeft size={20} /></button>
-                <button onClick={nextMonth} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><ChevronRight size={20} /></button>
-                <button onClick={() => setShowCalendarModal(false)} className="p-2 ml-2 bg-slate-100 text-slate-400 hover:text-slate-800 rounded-full transition-colors"><X size={20} /></button>
+              <div className="flex gap-1 sm:gap-2">
+                <button onClick={prevMonth} className="p-2.5 hover:bg-slate-100 rounded-full"><ChevronLeft size={18} /></button>
+                <button onClick={nextMonth} className="p-2.5 hover:bg-slate-100 rounded-full"><ChevronRight size={18} /></button>
+                <button onClick={() => setShowCalendarModal(false)} className="p-2.5 ml-1 bg-slate-100 text-slate-400 rounded-full"><X size={18} /></button>
               </div>
             </div>
-
-            <div className="grid grid-cols-7 gap-2 mb-4">
+            <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-4">
               {['M', 'S', 'S', 'R', 'K', 'J', 'S'].map((day, idx) => (
-                <div key={`head-${idx}`} className="text-center text-[10px] font-bold text-slate-400 py-2 uppercase tracking-widest">{day}</div>
+                <div key={`head-${idx}`} className="text-center text-[10px] font-bold text-slate-400 py-1 uppercase">{day}</div>
               ))}
-              {Array.from({ length: getFirstDayOfMonth(viewYear, viewMonth) }).map((_, i) => (
-                <div key={`empty-${i}`} />
-              ))}
+              {Array.from({ length: getFirstDayOfMonth(viewYear, viewMonth) }).map((_, i) => <div key={`empty-${i}`} />)}
               {Array.from({ length: getDaysInMonth(viewYear, viewMonth) }).map((_, i) => {
                 const dayNum = i + 1;
                 const status = getStatus(dayNum, viewMonth, viewYear);
@@ -434,17 +357,9 @@ Mohon konfirmasinya ya kak!`;
                 return (
                   <button
                     key={`day-${dayNum}`}
-                    onClick={() => {
-                      const d = new Date(viewYear, viewMonth, dayNum);
-                      handleDateClick(d);
-                      setShowCalendarModal(false);
-                    }}
+                    onClick={() => { handleDateClick(new Date(viewYear, viewMonth, dayNum)); setShowCalendarModal(false); }}
                     disabled={status === 0}
-                    className={`aspect-square rounded-xl flex items-center justify-center text-sm font-bold transition-all relative
-                      ${status === 2 ? 'bg-red-50 text-red-500' : status === 1 ? 'bg-emerald-50 text-emerald-600' : 'text-slate-200 cursor-not-allowed'}
-                      ${isSelected ? 'ring-2 ring-rose-500 ring-offset-2' : ''}
-                      hover:scale-110 active:scale-95
-                    `}
+                    className={`aspect-square rounded-xl flex items-center justify-center text-sm font-bold transition-all relative ${status === 2 ? 'bg-red-50 text-red-500' : status === 1 ? 'bg-emerald-50 text-emerald-600' : 'text-slate-200'} ${isSelected ? 'ring-2 ring-rose-500 ring-offset-1' : ''}`}
                   >
                     {dayNum}
                     {status === 2 && <div className="absolute bottom-1 w-1 h-1 bg-red-400 rounded-full" />}
@@ -459,70 +374,58 @@ Mohon konfirmasinya ya kak!`;
       {/* MODAL: Alert Booked */}
       {showAlertModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm animate-in zoom-in-95 duration-200">
-          <div className="bg-white w-full max-w-sm rounded-[2rem] p-10 text-center shadow-2xl">
-            <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
-              <X size={40} strokeWidth={3} />
+          <div className="bg-white w-full max-w-sm rounded-[2rem] p-8 text-center shadow-2xl">
+            <div className="w-16 h-16 bg-red-100 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <X size={32} strokeWidth={3} />
             </div>
             <h3 className="text-xl font-bold mb-2 text-slate-900">Maaf kak!</h3>
-            <p className="text-slate-400 text-sm mb-6 leading-relaxed font-bold">Tanggal ini sudah Full Booked, silahkan cari tanggal cantik lainnya ya.</p>
-            <button 
-              onClick={() => setShowAlertModal(false)}
-              className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all uppercase"
-            >
-              CARI TANGGAL LAIN
-            </button>
+            <p className="text-slate-400 text-sm mb-8 leading-relaxed font-bold">Tanggal ini sudah Full Booked, silahkan cari tanggal cantik lainnya ya.</p>
+            <button onClick={() => setShowAlertModal(false)} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold uppercase text-xs tracking-widest shadow-lg">CARI TANGGAL LAIN</button>
           </div>
         </div>
       )}
 
-      {/* MODAL: Booking Form */}
+      {/* MODAL: Booking Form - Bottom Sheet Optimized */}
       {showFormModal && (
         <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-lg rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 shadow-2xl max-h-[95vh] overflow-y-auto animate-in slide-in-from-bottom-10 no-scrollbar">
-            
+          <div className="bg-white w-full max-w-lg rounded-t-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl max-h-[92vh] overflow-y-auto animate-in slide-in-from-bottom-10 no-scrollbar pb-10 sm:pb-8">
+            <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-6 sm:hidden" />
             <div className="flex justify-between items-start mb-6">
               <div>
-                <h3 className="text-2xl font-bold text-slate-900">Form Booking</h3>
-                <p className="text-rose-500 text-sm font-semibold uppercase tracking-widest mt-1">Satu langkah lagi menuju momen abadi</p>
+                <h3 className="text-xl sm:text-2xl font-bold text-slate-900 leading-none">Form Booking</h3>
+                <p className="text-rose-500 text-xs sm:text-sm font-bold uppercase tracking-widest mt-2">{formatID(selectedDate)}</p>
               </div>
-              <button onClick={() => setShowFormModal(false)} className="p-2 bg-slate-100 text-slate-400 hover:text-slate-800 rounded-full transition-colors"><X size={20} /></button>
+              <button onClick={() => setShowFormModal(false)} className="p-2.5 bg-slate-100 text-slate-400 rounded-full"><X size={18} /></button>
             </div>
 
             <form onSubmit={handleFormSubmit} className="space-y-6">
-              {/* Paket Selection */}
-              <div>
-                <label className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Pilih Paket WCC</label>
-                <div className="grid grid-cols-1 gap-3">
+              {/* Package Selection - Large Touch Area */}
+              <div className="space-y-3">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Pilih Paket WCC</label>
+                <div className="space-y-3">
                   {PACKAGES.map((pkg) => (
                     <div 
                       key={pkg.id}
                       onClick={() => setFormData({...formData, paket: pkg.id})}
-                      className={`relative p-4 rounded-2xl border-2 transition-all cursor-pointer overflow-hidden ${
-                        formData.paket === pkg.id ? 'border-rose-500 bg-rose-50/50 shadow-sm' : 'border-slate-100 bg-white hover:border-slate-200'
-                      }`}
+                      className={`relative p-4 rounded-2xl border-2 transition-all cursor-pointer ${formData.paket === pkg.id ? 'border-rose-500 bg-rose-50/50' : 'border-slate-100 bg-white'}`}
                     >
                       <div className="flex justify-between items-center">
-                        <div className="flex flex-col">
-                          <span className={`text-sm font-bold ${formData.paket === pkg.id ? 'text-rose-600' : 'text-slate-800'}`}>{pkg.name}</span>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs font-black text-slate-900">{pkg.price}</span>
-                            <span className="text-[10px] text-slate-400 line-through decoration-rose-400/50 font-bold">{pkg.originalPrice}</span>
-                          </div>
+                        <div>
+                          <p className={`text-sm font-bold ${formData.paket === pkg.id ? 'text-rose-600' : 'text-slate-800'}`}>{pkg.name}</p>
+                          <p className="text-[10px] font-black mt-0.5">{pkg.price} <span className="text-slate-300 line-through font-bold ml-1">{pkg.originalPrice}</span></p>
                         </div>
                         <div className="flex items-center gap-3">
-                          <button type="button" onClick={(e) => togglePackageDetail(e, pkg.id)} className="text-[10px] font-bold text-rose-500 hover:underline flex items-center gap-0.5 uppercase">
-                            DETAIL {expandedPackage === pkg.id ? <ChevronUp size={12}/> : <ChevronDown size={12}/>}
-                          </button>
+                          <button type="button" onClick={(e) => togglePackageDetail(e, pkg.id)} className="text-[10px] font-bold text-rose-500 underline uppercase">Detail</button>
                           {formData.paket === pkg.id && <CheckCircle2 size={18} className="text-rose-500" />}
                         </div>
                       </div>
-                      <div className={`overflow-hidden transition-all duration-300 ${expandedPackage === pkg.id ? 'max-h-60 opacity-100 mt-4 pb-2' : 'max-h-0 opacity-0'}`}>
-                        <p className="text-[11px] text-slate-500 mb-3 italic font-bold">{pkg.description}</p>
+                      <div className={`overflow-hidden transition-all duration-300 ${expandedPackage === pkg.id ? 'max-h-60 mt-4' : 'max-h-0'}`}>
+                        <p className="text-[10px] text-slate-500 mb-3 italic font-medium">{pkg.description}</p>
                         <div className="grid grid-cols-1 gap-1.5">
                           {pkg.features.map((feature, fIdx) => (
                             <div key={fIdx} className="flex items-center gap-2">
                               <div className="w-1 h-1 bg-rose-400 rounded-full" />
-                              <span className="text-[10px] text-slate-600 font-bold leading-tight">{feature}</span>
+                              <span className="text-[10px] text-slate-600 font-bold">{feature}</span>
                             </div>
                           ))}
                         </div>
@@ -532,109 +435,63 @@ Mohon konfirmasinya ya kak!`;
                 </div>
               </div>
 
-              {/* Personal Data */}
+              {/* Personal Data - Fluid Layout */}
               <div className="space-y-4 pt-4 border-t border-slate-100">
-                <div>
-                  <label className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2"><CalendarDays size={14}/> Tanggal Acara</label>
-                  <input readOnly type="text" 
-                    className="w-full px-5 py-4 bg-slate-100 border-2 border-transparent rounded-2xl outline-none text-sm font-bold text-slate-600 cursor-not-allowed"
-                    value={formatID(selectedDate)}
-                  />
-                </div>
-
-                <div>
-                  <label className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2"><User size={14}/> Nama Pasangan</label>
-                  <input required type="text" placeholder="Andi & Bunga"
-                    className="w-full px-5 py-4 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-2xl outline-none transition-all text-sm font-bold"
-                    value={formData.namaPasangan}
-                    onChange={(e) => setFormData({...formData, namaPasangan: e.target.value})}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2"><Clock size={14}/> Waktu</label>
-                    <input required type="time"
-                      className="w-full px-5 py-4 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-2xl outline-none transition-all text-sm font-bold"
-                      value={formData.waktuAcara}
-                      onChange={(e) => setFormData({...formData, waktuAcara: e.target.value})}
-                    />
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Nama Pasangan</label>
+                    <input required type="text" placeholder="Andi & Bunga" className="w-full h-12 px-4 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-xl outline-none text-sm font-bold" value={formData.namaPasangan} onChange={(e) => setFormData({...formData, namaPasangan: e.target.value})} />
                   </div>
-                  <div>
-                    <label className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2"><MapPin size={14}/> Lokasi</label>
-                    <input required type="text" placeholder="Gedung/Kota"
-                      className="w-full px-5 py-4 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-2xl outline-none transition-all text-sm font-bold"
-                      value={formData.lokasiAcara}
-                      onChange={(e) => setFormData({...formData, lokasiAcara: e.target.value})}
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Waktu</label>
+                      <input required type="time" className="w-full h-12 px-3 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-xl outline-none text-sm font-bold" value={formData.waktuAcara} onChange={(e) => setFormData({...formData, waktuAcara: e.target.value})} />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Lokasi</label>
+                      <input required type="text" placeholder="Gedung" className="w-full h-12 px-3 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-xl outline-none text-sm font-bold" value={formData.lokasiAcara} onChange={(e) => setFormData({...formData, lokasiAcara: e.target.value})} />
+                    </div>
                   </div>
                 </div>
-
                 <div>
-                  <label className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Brief Tambahan</label>
-                  <textarea rows="3" placeholder="Sebutkan konsep atau link moodboard..."
-                    className="w-full px-6 py-5 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-[2rem] outline-none transition-all resize-none text-sm font-bold"
-                    value={formData.brief}
-                    onChange={(e) => setFormData({...formData, brief: e.target.value})}
-                  ></textarea>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Brief Tambahan</label>
+                  <textarea rows="2" placeholder="Link Pinterest atau catatan..." className="w-full p-4 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-xl outline-none resize-none text-sm font-bold" value={formData.brief} onChange={(e) => setFormData({...formData, brief: e.target.value})}></textarea>
                 </div>
               </div>
 
-              <button 
-                type="submit"
-                disabled={isSubmitting}
-                className={`w-full py-5 text-white rounded-[2rem] font-bold shadow-lg transition-all flex items-center justify-center gap-3 text-base ${
-                  isSubmitting ? 'bg-slate-400 cursor-not-allowed' : 'bg-rose-500 hover:bg-rose-600 active:scale-95 shadow-rose-200'
-                }`}
-              >
-                {isSubmitting ? (
-                  <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <MessageCircle size={22} fill="white" />
-                    SIMPAN & KONFIRMASI WA
-                  </>
-                )}
+              <button type="submit" disabled={isSubmitting} className={`w-full h-14 text-white rounded-2xl font-bold shadow-lg transition-all flex items-center justify-center gap-3 text-sm tracking-widest uppercase ${isSubmitting ? 'bg-slate-400' : 'bg-rose-500 hover:bg-rose-600 active:scale-[0.98]'}`}>
+                {isSubmitting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><MessageCircle size={20} fill="white" /> Konfirmasi Booking</>}
               </button>
             </form>
           </div>
         </div>
       )}
 
-      {/* FOOTER */}
-      <footer className="mt-20 py-16 px-6 bg-white border-t border-slate-100 text-center relative overflow-hidden shadow-[0_-20px_50px_-20px_rgba(0,0,0,0.05)]">
+      {/* Footer */}
+      <footer className="mt-12 py-12 px-6 bg-white border-t border-slate-100 text-center relative overflow-hidden">
         <div className="relative z-10 max-w-sm mx-auto">
-          <div className="flex items-center justify-center gap-2 mb-6 transition-all hover:scale-105 cursor-pointer">
-            <div className="w-8 h-8 bg-rose-500 rounded-xl flex items-center justify-center text-white rotate-3 shadow-md">
+          <div className="flex items-center justify-center gap-2 mb-6 transition-all hover:scale-105">
+            <div className="w-8 h-8 bg-rose-500 rounded-xl flex items-center justify-center text-white rotate-3">
                <Camera size={16} />
             </div>
-            <h1 className="text-xl font-black italic tracking-tighter uppercase">ETERNAL<span className="text-rose-500">LENS</span></h1>
+            <h1 className="text-xl font-bold italic tracking-tighter uppercase">ETERNAL<span className="text-rose-500">LENS</span></h1>
           </div>
-          <p className="text-slate-400 text-sm mb-10 font-bold italic tracking-tight leading-relaxed">"Abadikan setiap detail berharga lewat lensa cinematic kami untuk kenangan yang abadi."</p>
+          <p className="text-slate-400 text-xs sm:text-sm mb-10 font-bold italic leading-relaxed px-4">"Abadikan setiap detail berharga lewat lensa cinematic kami untuk kenangan yang abadi."</p>
           <div className="flex justify-center gap-5">
-            <div className="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:text-rose-500 hover:border-rose-100 transition-all cursor-pointer shadow-sm">
-               <Instagram size={20} />
-            </div>
+            <div className="w-11 h-11 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 shadow-sm transition-all active:scale-90"><Instagram size={20} /></div>
           </div>
-          <div className="mt-12 pt-8 border-t border-slate-50">
-             <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.4em]">© 2024 Eternal Lens • Jakarta</p>
-          </div>
+          <p className="mt-12 text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">© 2024 Eternal Lens • Jakarta</p>
         </div>
-        
-        {/* Decorative elements */}
         <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-rose-50 rounded-full blur-[100px] opacity-60"></div>
-        <div className="absolute -right-20 -top-20 w-64 h-64 bg-rose-50 rounded-full blur-[100px] opacity-60"></div>
       </footer>
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .animate-in {
-          animation-duration: 400ms;
-          animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-        }
+        .animate-in { animation-duration: 300ms; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+        input[type="time"]::-webkit-calendar-picker-indicator { background: transparent; bottom: 0; color: transparent; cursor: pointer; height: auto; left: 0; position: absolute; right: 0; top: 0; width: auto; }
       `}</style>
     </div>
   );
