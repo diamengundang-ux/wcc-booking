@@ -19,7 +19,8 @@ import {
   Zap,
   Smartphone,
   Video,
-  CalendarDays
+  CalendarDays,
+  AlertCircle
 } from 'lucide-react';
 
 // Firebase Imports
@@ -27,7 +28,8 @@ import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
   signInAnonymously, 
-  onAuthStateChanged 
+  onAuthStateChanged,
+  signInWithCustomToken 
 } from 'firebase/auth';
 import { 
   getFirestore, 
@@ -37,25 +39,28 @@ import {
   serverTimestamp 
 } from 'firebase/firestore';
 
-// --- KONFIGURASI FIREBASE ANDA ---
-// Kode ini sudah menggunakan config asli Anda agar langsung jalan di Vercel/GitHub
-const firebaseConfig = {
-  apiKey: "AIzaSyCCT03SyRpsIqtEc14z8GNKL3q1fM62YWs",
-  authDomain: "wcc-booking.firebaseapp.com",
-  projectId: "wcc-booking",
-  storageBucket: "wcc-booking.firebasestorage.app",
-  messagingSenderId: "451745038504",
-  appId: "1:451745038504:web:09e9172a18122b6ef5c29d",
-  measurementId: "G-B635M7N0BV"
-};
+// --- KONFIGURASI FIREBASE ---
+// Mengutamakan variabel lingkungan jika ada (untuk preview), 
+// jika tidak ada akan menggunakan config manual Anda (untuk deployment).
+const firebaseConfig = typeof __firebase_config !== 'undefined' 
+  ? JSON.parse(__firebase_config) 
+  : {
+      apiKey: "AIzaSyCCT03SyRpsIqtEc14z8GNKL3q1fM62YWs",
+      authDomain: "wcc-booking.firebaseapp.com",
+      projectId: "wcc-booking",
+      storageBucket: "wcc-booking.firebasestorage.app",
+      messagingSenderId: "451745038504",
+      appId: "1:451745038504:web:09e9172a18122b6ef5c29d",
+      measurementId: "G-B635M7N0BV"
+    };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// App ID Unik untuk Koleksi Database Anda
-const appId = 'wcc-booking-v1'; 
+// ID Unik untuk koleksi data Anda
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'wcc-booking-v1'; 
 
 // --- Konfigurasi Admin ---
 const ADMIN_PHONE = "628123456789"; 
@@ -125,6 +130,7 @@ const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
 
 const App = () => {
   const [user, setUser] = useState(null);
+  const [authError, setAuthError] = useState(null);
   const [bookings, setBookings] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMonth, setViewMonth] = useState(new Date().getMonth());
@@ -144,15 +150,19 @@ const App = () => {
     brief: ''
   });
 
-  // 1. Auth Initialization - Fixed for Deployment
+  // 1. Inisialisasi Auth (Perbaikan agar lebih fleksibel)
   useEffect(() => {
     const initAuth = async () => {
       try {
-        await signInAnonymously(auth);
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+        setAuthError(null);
       } catch (err) { 
-        console.error("Firebase Auth Error:", err); 
-        // INFO: Jika error configuration-not-found muncul, 
-        // aktifkan "Anonymous" di Firebase Console > Authentication > Sign-in method.
+        console.error("Firebase Auth Error:", err);
+        setAuthError(err.message);
       }
     };
     initAuth();
@@ -181,7 +191,7 @@ const App = () => {
     const d = new Date(year, month, day);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    if (d < today) return 0; // Past dates are unavailable
+    if (d < today) return 0; 
     
     const dateStr = d.toDateString();
     const isBooked = bookings.some(b => {
@@ -266,6 +276,14 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-[#FDFCFB] text-slate-800 font-sans selection:bg-rose-100 pb-12 overflow-x-hidden antialiased">
+      {/* Koneksi Status Error Info */}
+      {authError && (
+        <div className="bg-amber-50 border-b border-amber-100 px-4 py-2 flex items-center justify-center gap-2 text-[10px] font-bold text-amber-700">
+          <AlertCircle size={12} />
+          <span>Koneksi database terbatas. Pastikan 'Anonymous Auth' aktif di Firebase Console.</span>
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-white/90 backdrop-blur-md border-b border-slate-100 sticky top-0 z-40 px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center shadow-sm">
         <div className="flex items-center gap-2">
