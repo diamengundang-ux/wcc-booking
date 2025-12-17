@@ -38,12 +38,27 @@ import {
   serverTimestamp 
 } from 'firebase/firestore';
 
-// --- Inisialisasi Firebase ---
-const firebaseConfig = JSON.parse(__firebase_config);
+// --- Konfigurasi Firebase ---
+// Mendeteksi apakah kita di lingkungan internal atau eksternal (Vercel/GitHub)
+const firebaseConfig = typeof __firebase_config !== 'undefined' 
+  ? JSON.parse(__firebase_config) 
+  : {
+      apiKey: "AIzaSyCCT03SyRpsIqtEc14z8GNKL3q1fM62YWs",
+      authDomain: "wcc-booking.firebaseapp.com",
+      projectId: "wcc-booking",
+      storageBucket: "wcc-booking.firebasestorage.app",
+      messagingSenderId: "451745038504",
+      appId: "1:451745038504:web:09e9172a18122b6ef5c29d",
+      measurementId: "G-B635M7N0BV"
+    };
+
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'wcc-booking-app';
+
+// Menggunakan App ID dinamis atau statis jika dideploy
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'wcc-booking-v1'; 
 
 // --- Konfigurasi Admin ---
 const ADMIN_PHONE = "628123456789"; 
@@ -132,28 +147,42 @@ const App = () => {
     brief: ''
   });
 
+  // 1. Auth Initialization (RULE 3 - Critical Fix)
   useEffect(() => {
     const initAuth = async () => {
       try {
+        // Cek jika token awal tersedia (lingkungan Preview), jika tidak gunakan signInAnonymously
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
           await signInWithCustomToken(auth, __initial_auth_token);
         } else {
+          // PENTING: Pastikan Anda telah mengaktifkan 'Anonymous' provider di Firebase Console
           await signInAnonymously(auth);
         }
-      } catch (err) { console.error("Auth Error:", err); }
+      } catch (err) { 
+        console.error("Auth Error:", err); 
+        // Penjelasan: Error (auth/configuration-not-found) berarti fitur 'Anonymous Sign-in' 
+        // belum diaktifkan di dashboard Firebase (Authentication -> Sign-in method).
+      }
     };
     initAuth();
     const unsubscribe = onAuthStateChanged(auth, setUser);
     return () => unsubscribe();
   }, []);
 
+  // 2. Fetch Data (RULE 1 & 2)
   useEffect(() => {
     if (!user) return;
+    
+    // Path wajib: /artifacts/{appId}/public/data/{collectionName}
     const bookingsCol = collection(db, 'artifacts', appId, 'public', 'data', 'bookings');
+    
     const unsubscribe = onSnapshot(bookingsCol, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setBookings(data);
-    }, (error) => { console.error("Firestore Listen Error:", error); });
+    }, (error) => { 
+      console.error("Firestore Listen Error:", error); 
+    });
+    
     return () => unsubscribe();
   }, [user]);
 
@@ -162,9 +191,11 @@ const App = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     if (d < today) return 0;
+    
     const dateStr = d.toDateString();
     const isBooked = bookings.some(b => {
       if (b.tanggalAcaraTimestamp) {
+        // Handle Firestore Timestamp atau format Date biasa
         const bookedDate = b.tanggalAcaraTimestamp.toDate ? b.tanggalAcaraTimestamp.toDate() : new Date(b.tanggalAcaraTimestamp);
         return bookedDate.toDateString() === dateStr;
       }
@@ -213,8 +244,10 @@ const App = () => {
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (!user || isSubmitting) return;
+    
     setIsSubmitting(true);
     const selectedPaketObj = PACKAGES.find(p => p.id === formData.paket);
+    
     try {
       const bookingsCol = collection(db, 'artifacts', appId, 'public', 'data', 'bookings');
       await addDoc(bookingsCol, {
@@ -228,12 +261,17 @@ const App = () => {
         userId: user.uid,
         createdAt: serverTimestamp()
       });
+      
       const message = `*NEW BOOKING WCC REQUEST* 📸✨\n\nTanggal: ${formatID(selectedDate)}\n💍 Pasangan: ${formData.namaPasangan}\n🕒 Waktu: ${formData.waktuAcara}\n📍 Lokasi: ${formData.lokasiAcara}\n📦 Paket: ${selectedPaketObj?.name || formData.paket}\n📝 Brief: ${formData.brief || '-'}`;
       window.open(`https://wa.me/${ADMIN_PHONE}?text=${encodeURIComponent(message)}`, '_blank');
+      
       setShowFormModal(false);
       setIsSubmitting(false);
       setFormData({ namaPasangan: '', waktuAcara: '', lokasiAcara: '', paket: 'signature', brief: '' });
-    } catch (error) { console.error("Booking Error:", error); setIsSubmitting(false); }
+    } catch (error) { 
+      console.error("Booking Error:", error); 
+      setIsSubmitting(false); 
+    }
   };
 
   return (
@@ -253,13 +291,13 @@ const App = () => {
         {/* Hero */}
         <section className="mb-8 sm:mb-10 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-rose-50 text-rose-600 text-[10px] font-bold rounded-full mb-4 tracking-widest uppercase border border-rose-100">
-            <Sparkles size={10} /> Real-time Booking
+            <Sparkles size={10} /> Real-time Cloud Booking
           </div>
           <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 mb-2 tracking-tight px-2">
             Abadikan Momen Terindahmu
           </h2>
-          <p className="text-slate-500 text-sm max-w-sm mx-auto px-4">
-            Pilih tanggal pernikahanmu dan amankan slot dokumentasi cinematic kamu.
+          <p className="text-slate-500 text-sm max-w-sm mx-auto px-4 font-medium opacity-80">
+            Pilih tanggal pernikahanmu dan amankan slot dokumentasi cinematic kamu secara langsung.
           </p>
         </section>
 
@@ -269,7 +307,7 @@ const App = () => {
             <h3 className="font-bold text-slate-800 text-sm sm:text-base">Tersedia Minggu Ini</h3>
             <button 
               onClick={() => setShowCalendarModal(true)}
-              className="text-rose-500 text-[11px] font-bold flex items-center gap-1 uppercase tracking-wider"
+              className="text-rose-500 text-[11px] font-bold flex items-center gap-1 uppercase tracking-wider hover:underline"
             >
               <CalendarIcon size={14} /> LIHAT KALENDER
             </button>
@@ -299,10 +337,10 @@ const App = () => {
         </section>
 
         {/* Legend */}
-        <div className="flex justify-center gap-4 sm:gap-6 mb-10 text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-white/50 py-2 rounded-full border border-slate-100 mx-2">
+        <div className="flex justify-center gap-4 sm:gap-6 mb-10 text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-white/50 py-2 rounded-full border border-slate-100 mx-2 shadow-sm">
           <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Tersedia</div>
-          <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-red-400" /> Booked</div>
-          <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-slate-300" /> No Slot</div>
+          <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-red-400" /> Full Booked</div>
+          <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-slate-300" /> Tutup</div>
         </div>
 
         {/* Premium Highlights */}
@@ -322,7 +360,7 @@ const App = () => {
                  </div>
                  <div className="flex items-center gap-2 bg-white/5 p-2.5 rounded-xl border border-white/10">
                     <Smartphone size={14} className="text-rose-500" />
-                    <span className="text-[9px] font-bold uppercase tracking-wider">Vertical</span>
+                    <span className="text-[9px] font-bold uppercase tracking-wider">Vertical Content</span>
                  </div>
               </div>
             </div>
@@ -331,18 +369,18 @@ const App = () => {
         </section>
       </main>
 
-      {/* MODAL: Calendar - Bottom Sheet on Mobile */}
+      {/* MODAL: Calendar */}
       {showCalendarModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-md rounded-t-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl animate-in slide-in-from-bottom-10 border-t border-slate-50 overflow-hidden">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg sm:text-xl font-bold text-slate-900">
+              <h3 className="text-lg sm:text-xl font-bold text-slate-900 uppercase italic">
                 {new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(new Date(viewYear, viewMonth))}
               </h3>
               <div className="flex gap-1 sm:gap-2">
                 <button onClick={prevMonth} className="p-2.5 hover:bg-slate-100 rounded-full"><ChevronLeft size={18} /></button>
                 <button onClick={nextMonth} className="p-2.5 hover:bg-slate-100 rounded-full"><ChevronRight size={18} /></button>
-                <button onClick={() => setShowCalendarModal(false)} className="p-2.5 ml-1 bg-slate-100 text-slate-400 rounded-full"><X size={18} /></button>
+                <button onClick={() => setShowCalendarModal(false)} className="p-2.5 ml-1 bg-slate-900 text-white rounded-full hover:bg-rose-500"><X size={18} /></button>
               </div>
             </div>
             <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-4">
@@ -359,7 +397,7 @@ const App = () => {
                     key={`day-${dayNum}`}
                     onClick={() => { handleDateClick(new Date(viewYear, viewMonth, dayNum)); setShowCalendarModal(false); }}
                     disabled={status === 0}
-                    className={`aspect-square rounded-xl flex items-center justify-center text-sm font-bold transition-all relative ${status === 2 ? 'bg-red-50 text-red-500' : status === 1 ? 'bg-emerald-50 text-emerald-600' : 'text-slate-200'} ${isSelected ? 'ring-2 ring-rose-500 ring-offset-1' : ''}`}
+                    className={`aspect-square rounded-xl flex items-center justify-center text-sm font-bold transition-all relative ${status === 2 ? 'bg-red-50 text-red-500' : status === 1 ? 'bg-emerald-50 text-emerald-600' : 'text-slate-200 cursor-not-allowed'} ${isSelected ? 'ring-2 ring-rose-500 ring-offset-1 bg-rose-500 !text-white' : ''}`}
                   >
                     {dayNum}
                     {status === 2 && <div className="absolute bottom-1 w-1 h-1 bg-red-400 rounded-full" />}
@@ -380,12 +418,12 @@ const App = () => {
             </div>
             <h3 className="text-xl font-bold mb-2 text-slate-900">Maaf kak!</h3>
             <p className="text-slate-400 text-sm mb-8 leading-relaxed font-bold">Tanggal ini sudah Full Booked, silahkan cari tanggal cantik lainnya ya.</p>
-            <button onClick={() => setShowAlertModal(false)} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold uppercase text-xs tracking-widest shadow-lg">CARI TANGGAL LAIN</button>
+            <button onClick={() => setShowAlertModal(false)} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold uppercase text-xs tracking-widest shadow-lg active:scale-95">OKE, SAYA CARI LAGI</button>
           </div>
         </div>
       )}
 
-      {/* MODAL: Booking Form - Bottom Sheet Optimized */}
+      {/* MODAL: Booking Form */}
       {showFormModal && (
         <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-lg rounded-t-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl max-h-[92vh] overflow-y-auto animate-in slide-in-from-bottom-10 no-scrollbar pb-10 sm:pb-8">
@@ -399,7 +437,7 @@ const App = () => {
             </div>
 
             <form onSubmit={handleFormSubmit} className="space-y-6">
-              {/* Package Selection - Large Touch Area */}
+              {/* Package Selection */}
               <div className="space-y-3">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Pilih Paket WCC</label>
                 <div className="space-y-3">
@@ -407,7 +445,7 @@ const App = () => {
                     <div 
                       key={pkg.id}
                       onClick={() => setFormData({...formData, paket: pkg.id})}
-                      className={`relative p-4 rounded-2xl border-2 transition-all cursor-pointer ${formData.paket === pkg.id ? 'border-rose-500 bg-rose-50/50' : 'border-slate-100 bg-white'}`}
+                      className={`relative p-4 rounded-2xl border-2 transition-all cursor-pointer ${formData.paket === pkg.id ? 'border-rose-500 bg-rose-50/50 shadow-sm' : 'border-slate-100 bg-white hover:border-slate-200'}`}
                     >
                       <div className="flex justify-between items-center">
                         <div>
@@ -420,12 +458,12 @@ const App = () => {
                         </div>
                       </div>
                       <div className={`overflow-hidden transition-all duration-300 ${expandedPackage === pkg.id ? 'max-h-60 mt-4' : 'max-h-0'}`}>
-                        <p className="text-[10px] text-slate-500 mb-3 italic font-medium">{pkg.description}</p>
+                        <p className="text-[10px] text-slate-500 mb-3 italic font-bold">{pkg.description}</p>
                         <div className="grid grid-cols-1 gap-1.5">
                           {pkg.features.map((feature, fIdx) => (
                             <div key={fIdx} className="flex items-center gap-2">
                               <div className="w-1 h-1 bg-rose-400 rounded-full" />
-                              <span className="text-[10px] text-slate-600 font-bold">{feature}</span>
+                              <span className="text-[10px] text-slate-600 font-bold leading-tight">{feature}</span>
                             </div>
                           ))}
                         </div>
@@ -435,7 +473,7 @@ const App = () => {
                 </div>
               </div>
 
-              {/* Personal Data - Fluid Layout */}
+              {/* Personal Data */}
               <div className="space-y-4 pt-4 border-t border-slate-100">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
@@ -459,7 +497,7 @@ const App = () => {
                 </div>
               </div>
 
-              <button type="submit" disabled={isSubmitting} className={`w-full h-14 text-white rounded-2xl font-bold shadow-lg transition-all flex items-center justify-center gap-3 text-sm tracking-widest uppercase ${isSubmitting ? 'bg-slate-400' : 'bg-rose-500 hover:bg-rose-600 active:scale-[0.98]'}`}>
+              <button type="submit" disabled={isSubmitting} className={`w-full h-14 text-white rounded-2xl font-bold shadow-lg transition-all flex items-center justify-center gap-3 text-sm tracking-widest uppercase ${isSubmitting ? 'bg-slate-400' : 'bg-rose-500 hover:bg-rose-600 active:scale-[0.98] shadow-rose-200'}`}>
                 {isSubmitting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><MessageCircle size={20} fill="white" /> Konfirmasi Booking</>}
               </button>
             </form>
@@ -470,8 +508,8 @@ const App = () => {
       {/* Footer */}
       <footer className="mt-12 py-12 px-6 bg-white border-t border-slate-100 text-center relative overflow-hidden">
         <div className="relative z-10 max-w-sm mx-auto">
-          <div className="flex items-center justify-center gap-2 mb-6 transition-all hover:scale-105">
-            <div className="w-8 h-8 bg-rose-500 rounded-xl flex items-center justify-center text-white rotate-3">
+          <div className="flex items-center justify-center gap-2 mb-6 transition-all hover:scale-105 active:scale-95 cursor-pointer">
+            <div className="w-8 h-8 bg-rose-500 rounded-xl flex items-center justify-center text-white rotate-3 shadow-md">
                <Camera size={16} />
             </div>
             <h1 className="text-xl font-bold italic tracking-tighter uppercase">ETERNAL<span className="text-rose-500">LENS</span></h1>
@@ -483,6 +521,7 @@ const App = () => {
           <p className="mt-12 text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">© 2024 Eternal Lens • Jakarta</p>
         </div>
         <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-rose-50 rounded-full blur-[100px] opacity-60"></div>
+        <div className="absolute -right-20 -top-20 w-64 h-64 bg-rose-50 rounded-full blur-[100px] opacity-60"></div>
       </footer>
 
       <style>{`
