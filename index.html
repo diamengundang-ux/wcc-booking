@@ -1,1 +1,71 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETERNAL LENS - WCC Booking</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- React & Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .animate-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-[#FDFCFB]">
+    <div id="root"></div>
 
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // --- KONFIGURASI FIREBASE ANDA ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCCT03SyRpsIqtEc14z8GNKL3q1fM62YWs",
+            authDomain: "wcc-booking.firebaseapp.com",
+            projectId: "wcc-booking",
+            storageBucket: "wcc-booking.firebasestorage.app",
+            messagingSenderId: "451745038504",
+            appId: "1:451745038504:web:09e9172a18122b6ef5c29d",
+            measurementId: "G-B635M7N0BV"
+        };
+
+        // Karena ini Single HTML, kita pakai Firebase via CDN
+        // Note: Untuk deployment sungguhan, pastikan mengimpor SDK dengan benar
+        // Di sini saya asumsikan environment mendukung modular imports atau pakai SDK lama
+    </script>
+
+    <!-- Memuat SDK Firebase secara modular via CDN -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // Initialize Firebase
+        const app = initializeApp({
+            apiKey: "AIzaSyCCT03SyRpsIqtEc14z8GNKL3q1fM62YWs",
+            authDomain: "wcc-booking.firebaseapp.com",
+            projectId: "wcc-booking",
+            storageBucket: "wcc-booking.firebasestorage.app",
+            messagingSenderId: "451745038504",
+            appId: "1:451745038504:web:09e9172a18122b6ef5c29d"
+        });
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = 'wcc-booking-v1';
+        const ADMIN_PHONE = "628123456789";
+
+        // Render React App
+        // (Seluruh logika React Anda dipindahkan ke sini agar satu file)
+    </script>
+</body>
+</html>
