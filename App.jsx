@@ -1,0 +1,527 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  Calendar as CalendarIcon, 
+  MessageCircle, 
+  MapPin, 
+  Clock, 
+  User, 
+  X,
+  Camera,
+  Heart,
+  CheckCircle2,
+  Package,
+  ChevronDown,
+  ChevronUp,
+  Sparkles,
+  Instagram,
+  Zap,
+  Smartphone,
+  Video,
+  CalendarDays
+} from 'lucide-react';
+
+// Firebase Imports
+import { initializeApp } from 'firebase/app';
+import { 
+  getAuth, 
+  signInAnonymously, 
+  onAuthStateChanged 
+} from 'firebase/auth';
+import { 
+  getFirestore, 
+  collection, 
+  onSnapshot, 
+  addDoc, 
+  serverTimestamp 
+} from 'firebase/firestore';
+
+// --- KONFIGURASI FIREBASE ANDA ---
+// Kode ini sudah menggunakan config asli Anda agar langsung jalan di Vercel/GitHub
+const firebaseConfig = {
+  apiKey: "AIzaSyCCT03SyRpsIqtEc14z8GNKL3q1fM62YWs",
+  authDomain: "wcc-booking.firebaseapp.com",
+  projectId: "wcc-booking",
+  storageBucket: "wcc-booking.firebasestorage.app",
+  messagingSenderId: "451745038504",
+  appId: "1:451745038504:web:09e9172a18122b6ef5c29d",
+  measurementId: "G-B635M7N0BV"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// App ID Unik untuk Koleksi Database Anda
+const appId = 'wcc-booking-v1'; 
+
+// --- Konfigurasi Admin ---
+const ADMIN_PHONE = "628123456789"; 
+
+// --- Data Paket ---
+const PACKAGES = [
+  {
+    id: 'lite',
+    name: 'Lite Package',
+    originalPrice: 'Rp 1.800.000',
+    price: 'Rp 1.500.000',
+    description: 'Pilihan ekonomis untuk acara durasi pendek dengan hasil maksimal.',
+    features: [
+      '3-4 Jam Standby (Akad/Engagement)',
+      '1 Profesional Content Creator',
+      '10-15 Real Time Story Clips',
+      '1 Edited Cinematic Reel (15-30s)',
+      'Seluruh Raw Files (Unedited)',
+      'Pengiriman via Google Drive/iCloud'
+    ]
+  },
+  {
+    id: 'signature',
+    name: 'Signature Package',
+    originalPrice: 'Rp 3.500.000',
+    price: 'Rp 2.500.000',
+    description: 'Paket paling populer untuk dokumentasi pernikahan penuh seharian.',
+    features: [
+      '8-9 Jam Standby (Full Day)',
+      '1 Profesional Content Creator',
+      '30-40 Real Time Story Clips',
+      '3 Edited Cinematic Reels/TikTok',
+      'Fitur Digital Invitation (Insta Story)',
+      'Seluruh Raw Files (Unedited)',
+      'Pengiriman Cepat (Max 24 Jam)'
+    ]
+  },
+  {
+    id: 'deluxe',
+    name: 'Deluxe Package',
+    originalPrice: 'Rp 5.500.000',
+    price: 'Rp 4.000.000',
+    description: 'Layanan VIP dengan dua kreator untuk sudut pandang yang lebih lengkap.',
+    features: [
+      '8-10 Jam Standby (Full Day)',
+      '2 Profesional Content Creators',
+      'Unlimited Real Time Story Clips',
+      '5 Edited Cinematic Reels/TikTok',
+      'Same Day Edit Video Highlight',
+      'Instagram Takeover (Admin Posting)',
+      'Seluruh Raw Files (Unedited)',
+      'Prioritas Pengiriman (Instan)'
+    ]
+  }
+];
+
+const formatID = (date) => {
+  return new Intl.DateTimeFormat('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  }).format(date);
+};
+
+const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
+const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
+
+const App = () => {
+  const [user, setUser] = useState(null);
+  const [bookings, setBookings] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [viewMonth, setViewMonth] = useState(new Date().getMonth());
+  const [viewYear, setViewYear] = useState(new Date().getFullYear());
+  
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const [expandedPackage, setExpandedPackage] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [formData, setFormData] = useState({
+    namaPasangan: '',
+    waktuAcara: '',
+    lokasiAcara: '',
+    paket: 'signature',
+    brief: ''
+  });
+
+  // 1. Auth Initialization - Fixed for Deployment
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        await signInAnonymously(auth);
+      } catch (err) { 
+        console.error("Firebase Auth Error:", err); 
+        // INFO: Jika error configuration-not-found muncul, 
+        // aktifkan "Anonymous" di Firebase Console > Authentication > Sign-in method.
+      }
+    };
+    initAuth();
+    const unsubscribe = onAuthStateChanged(auth, setUser);
+    return () => unsubscribe();
+  }, []);
+
+  // 2. Fetch Data Real-time
+  useEffect(() => {
+    if (!user) return;
+    
+    // Path: /artifacts/{appId}/public/data/{collectionName}
+    const bookingsCol = collection(db, 'artifacts', appId, 'public', 'data', 'bookings');
+    
+    const unsubscribe = onSnapshot(bookingsCol, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setBookings(data);
+    }, (error) => { 
+      console.error("Firestore Error:", error); 
+    });
+    
+    return () => unsubscribe();
+  }, [user]);
+
+  const getStatus = (day, month, year) => {
+    const d = new Date(year, month, day);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (d < today) return 0; // Past dates are unavailable
+    
+    const dateStr = d.toDateString();
+    const isBooked = bookings.some(b => {
+      if (b.tanggalAcaraTimestamp) {
+        const bookedDate = b.tanggalAcaraTimestamp.toDate ? b.tanggalAcaraTimestamp.toDate() : new Date(b.tanggalAcaraTimestamp);
+        return bookedDate.toDateString() === dateStr;
+      }
+      return false;
+    });
+    if (isBooked) return 2;
+    return 1;
+  };
+
+  const dateStrip = useMemo(() => {
+    const dates = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      dates.push(d);
+    }
+    return dates;
+  }, []);
+
+  const handleDateClick = (date) => {
+    const status = getStatus(date.getDate(), date.getMonth(), date.getFullYear());
+    setSelectedDate(date);
+    if (status === 0) return;
+    if (status === 2) {
+      setShowAlertModal(true);
+    } else {
+      setShowFormModal(true);
+    }
+  };
+
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(viewYear + 1); }
+    else { setViewMonth(viewMonth + 1); }
+  };
+
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(viewYear - 1); }
+    else { setViewMonth(viewMonth - 1); }
+  };
+
+  const togglePackageDetail = (e, pkgId) => {
+    e.stopPropagation();
+    setExpandedPackage(expandedPackage === pkgId ? null : pkgId);
+  };
+
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    if (!user || isSubmitting) return;
+    
+    setIsSubmitting(true);
+    const selectedPaketObj = PACKAGES.find(p => p.id === formData.paket);
+    
+    try {
+      const bookingsCol = collection(db, 'artifacts', appId, 'public', 'data', 'bookings');
+      await addDoc(bookingsCol, {
+        namaPasangan: formData.namaPasangan,
+        tanggalAcaraText: formatID(selectedDate),
+        tanggalAcaraTimestamp: selectedDate,
+        waktuAcara: formData.waktuAcara,
+        lokasiAcara: formData.lokasiAcara,
+        paket: selectedPaketObj?.name || formData.paket,
+        brief: formData.brief,
+        userId: user.uid,
+        createdAt: serverTimestamp()
+      });
+      
+      const message = `*NEW BOOKING WCC REQUEST* 📸✨\n\nTanggal: ${formatID(selectedDate)}\n💍 Pasangan: ${formData.namaPasangan}\n🕒 Waktu: ${formData.waktuAcara}\n📍 Lokasi: ${formData.lokasiAcara}\n📦 Paket: ${selectedPaketObj?.name || formData.paket}\n📝 Brief: ${formData.brief || '-'}`;
+      window.open(`https://wa.me/${ADMIN_PHONE}?text=${encodeURIComponent(message)}`, '_blank');
+      
+      setShowFormModal(false);
+      setIsSubmitting(false);
+      setFormData({ namaPasangan: '', waktuAcara: '', lokasiAcara: '', paket: 'signature', brief: '' });
+    } catch (error) { 
+      console.error("Booking Error:", error); 
+      setIsSubmitting(false); 
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#FDFCFB] text-slate-800 font-sans selection:bg-rose-100 pb-12 overflow-x-hidden antialiased">
+      {/* Header */}
+      <header className="bg-white/90 backdrop-blur-md border-b border-slate-100 sticky top-0 z-40 px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center shadow-sm">
+        <div className="flex items-center gap-2">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 bg-rose-500 rounded-xl flex items-center justify-center text-white shadow-lg">
+            <Camera size={18} />
+          </div>
+          <h1 className="text-lg sm:text-xl font-bold tracking-tight italic">ETERNAL<span className="text-rose-500">LENS</span></h1>
+        </div>
+        <button className="p-2 text-rose-500 active:scale-90 transition-transform"><Instagram size={20}/></button>
+      </header>
+
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
+        {/* Hero */}
+        <section className="mb-8 sm:mb-10 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-rose-50 text-rose-600 text-[10px] font-bold rounded-full mb-4 tracking-widest uppercase border border-rose-100">
+            <Sparkles size={10} /> Real-time Cloud Booking
+          </div>
+          <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 mb-2 tracking-tight px-2">
+            Abadikan Momen Terindahmu
+          </h2>
+          <p className="text-slate-500 text-sm max-w-sm mx-auto px-4 font-medium opacity-80">
+            Pilih tanggal pernikahanmu dan amankan slot dokumentasi cinematic kamu secara langsung.
+          </p>
+        </section>
+
+        {/* 7 Days Strip */}
+        <section className="mb-8">
+          <div className="flex justify-between items-center mb-4 px-1">
+            <h3 className="font-bold text-slate-800 text-sm sm:text-base">Tersedia Minggu Ini</h3>
+            <button 
+              onClick={() => setShowCalendarModal(true)}
+              className="text-rose-500 text-[11px] font-bold flex items-center gap-1 uppercase tracking-wider hover:underline"
+            >
+              <CalendarIcon size={14} /> LIHAT KALENDER
+            </button>
+          </div>
+          
+          <div className="flex gap-3 overflow-x-auto pb-4 px-1 no-scrollbar snap-x snap-mandatory">
+            {dateStrip.map((date, idx) => {
+              const status = getStatus(date.getDate(), date.getMonth(), date.getFullYear());
+              const isSelected = selectedDate.toDateString() === date.toDateString();
+              return (
+                <button
+                  key={`strip-${idx}`}
+                  onClick={() => handleDateClick(date)}
+                  className={`flex-shrink-0 w-16 h-24 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 transform active:scale-95 border-2 snap-center ${
+                    isSelected ? 'border-rose-500 bg-rose-500 text-white shadow-lg' : 'border-transparent bg-white shadow-sm'
+                  }`}
+                >
+                  <span className={`text-[10px] font-bold uppercase mb-1 ${isSelected ? 'text-rose-100' : 'text-slate-400'}`}>
+                    {new Intl.DateTimeFormat('id-ID', { weekday: 'short' }).format(date)}
+                  </span>
+                  <span className="text-lg font-black">{date.getDate()}</span>
+                  <div className={`mt-2 w-1.5 h-1.5 rounded-full ${status === 2 ? 'bg-red-400 animate-pulse' : status === 1 ? 'bg-emerald-400' : 'bg-slate-200'}`} />
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Legend */}
+        <div className="flex justify-center gap-4 sm:gap-6 mb-10 text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-white/50 py-2 rounded-full border border-slate-100 mx-2 shadow-sm">
+          <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Tersedia</div>
+          <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-red-400" /> Full Booked</div>
+          <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-slate-300" /> No Slot</div>
+        </div>
+
+        {/* Premium Highlights */}
+        <section className="space-y-4 px-1">
+          <div className="bg-slate-900 rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 text-white overflow-hidden relative shadow-xl">
+            <div className="relative z-10">
+              <div className="w-10 h-10 bg-rose-500/20 text-rose-500 rounded-xl flex items-center justify-center mb-4">
+                <Heart fill="currentColor" size={20} />
+              </div>
+              <h4 className="text-xl font-bold mb-2 tracking-tight italic uppercase">Kenangan Digital</h4>
+              <p className="text-slate-400 text-xs sm:text-sm mb-6 leading-relaxed font-medium opacity-80">Kami menceritakan kebahagiaanmu lewat lensa yang estetik dan instan.</p>
+              
+              <div className="grid grid-cols-2 gap-3">
+                 <div className="flex items-center gap-2 bg-white/5 p-2.5 rounded-xl border border-white/10">
+                    <Zap size={14} className="text-rose-500" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider">Fast Edit</span>
+                 </div>
+                 <div className="flex items-center gap-2 bg-white/5 p-2.5 rounded-xl border border-white/10">
+                    <Smartphone size={14} className="text-rose-500" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider">Vertical Content</span>
+                 </div>
+              </div>
+            </div>
+            <div className="absolute -right-20 -bottom-20 w-64 h-64 bg-rose-500/10 rounded-full blur-[80px]"></div>
+          </div>
+        </section>
+      </main>
+
+      {/* MODAL: Calendar */}
+      {showCalendarModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-md rounded-t-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl animate-in slide-in-from-bottom-10 border-t border-slate-50 overflow-hidden">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg sm:text-xl font-bold text-slate-900 uppercase italic">
+                {new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(new Date(viewYear, viewMonth))}
+              </h3>
+              <div className="flex gap-1 sm:gap-2">
+                <button onClick={prevMonth} className="p-2.5 hover:bg-slate-100 rounded-full"><ChevronLeft size={18} /></button>
+                <button onClick={nextMonth} className="p-2.5 hover:bg-slate-100 rounded-full"><ChevronRight size={18} /></button>
+                <button onClick={() => setShowCalendarModal(false)} className="p-2.5 ml-1 bg-slate-100 text-slate-400 rounded-full hover:bg-rose-500"><X size={18} /></button>
+              </div>
+            </div>
+            <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-4">
+              {['M', 'S', 'S', 'R', 'K', 'J', 'S'].map((day, idx) => (
+                <div key={`head-${idx}`} className="text-center text-[10px] font-bold text-slate-400 py-1 uppercase">{day}</div>
+              ))}
+              {Array.from({ length: getFirstDayOfMonth(viewYear, viewMonth) }).map((_, i) => <div key={`empty-${i}`} />)}
+              {Array.from({ length: getDaysInMonth(viewYear, viewMonth) }).map((_, i) => {
+                const dayNum = i + 1;
+                const status = getStatus(dayNum, viewMonth, viewYear);
+                const isSelected = selectedDate.getDate() === dayNum && selectedDate.getMonth() === viewMonth && selectedDate.getFullYear() === viewYear;
+                return (
+                  <button
+                    key={`day-${dayNum}`}
+                    onClick={() => { handleDateClick(new Date(viewYear, viewMonth, dayNum)); setShowCalendarModal(false); }}
+                    disabled={status === 0}
+                    className={`aspect-square rounded-xl flex items-center justify-center text-sm font-bold transition-all relative ${status === 2 ? 'bg-red-50 text-red-500' : status === 1 ? 'bg-emerald-50 text-emerald-600' : 'text-slate-200 cursor-not-allowed'} ${isSelected ? 'ring-2 ring-rose-500 ring-offset-1 bg-rose-500 !text-white' : ''}`}
+                  >
+                    {dayNum}
+                    {status === 2 && <div className="absolute bottom-1 w-1 h-1 bg-red-400 rounded-full" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Alert Booked */}
+      {showAlertModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm animate-in zoom-in-95 duration-200">
+          <div className="bg-white w-full max-w-sm rounded-[2rem] p-8 text-center shadow-2xl">
+            <div className="w-16 h-16 bg-red-100 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <X size={32} strokeWidth={3} />
+            </div>
+            <h3 className="text-xl font-bold mb-2 text-slate-900">Maaf kak!</h3>
+            <p className="text-slate-400 text-sm mb-8 leading-relaxed font-bold">Tanggal ini sudah Full Booked, silahkan cari tanggal cantik lainnya ya.</p>
+            <button onClick={() => setShowAlertModal(false)} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold uppercase text-xs tracking-widest shadow-lg active:scale-95">OKE, SAYA CARI LAGI</button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Booking Form */}
+      {showFormModal && (
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-lg rounded-t-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl max-h-[92vh] overflow-y-auto animate-in slide-in-from-bottom-10 no-scrollbar pb-10 sm:pb-8">
+            <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-6 sm:hidden" />
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h3 className="text-xl sm:text-2xl font-bold text-slate-900 leading-none">Form Booking</h3>
+                <p className="text-rose-500 text-xs sm:text-sm font-bold uppercase tracking-widest mt-2">{formatID(selectedDate)}</p>
+              </div>
+              <button onClick={() => setShowFormModal(false)} className="p-2.5 bg-slate-100 text-slate-400 rounded-full"><X size={18} /></button>
+            </div>
+
+            <form onSubmit={handleFormSubmit} className="space-y-6">
+              <div className="space-y-3">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Pilih Paket WCC</label>
+                <div className="space-y-3">
+                  {PACKAGES.map((pkg) => (
+                    <div 
+                      key={pkg.id}
+                      onClick={() => setFormData({...formData, paket: pkg.id})}
+                      className={`relative p-4 rounded-2xl border-2 transition-all cursor-pointer ${formData.paket === pkg.id ? 'border-rose-500 bg-rose-50/50 shadow-sm' : 'border-slate-100 bg-white hover:border-slate-200'}`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className={`text-sm font-bold ${formData.paket === pkg.id ? 'text-rose-600' : 'text-slate-800'}`}>{pkg.name}</p>
+                          <p className="text-[10px] font-black mt-0.5">{pkg.price} <span className="text-slate-300 line-through font-bold ml-1">{pkg.originalPrice}</span></p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <button type="button" onClick={(e) => togglePackageDetail(e, pkg.id)} className="text-[10px] font-bold text-rose-500 underline uppercase">Detail</button>
+                          {formData.paket === pkg.id && <CheckCircle2 size={18} className="text-rose-500" />}
+                        </div>
+                      </div>
+                      <div className={`overflow-hidden transition-all duration-300 ${expandedPackage === pkg.id ? 'max-h-60 mt-4' : 'max-h-0'}`}>
+                        <p className="text-[10px] text-slate-500 mb-3 italic font-bold">{pkg.description}</p>
+                        <div className="grid grid-cols-1 gap-1.5">
+                          {pkg.features.map((feature, fIdx) => (
+                            <div key={fIdx} className="flex items-center gap-2">
+                              <div className="w-1 h-1 bg-rose-400 rounded-full" />
+                              <span className="text-[10px] text-slate-600 font-bold leading-tight">{feature}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-4 border-t border-slate-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Nama Pasangan</label>
+                    <input required type="text" placeholder="Andi & Bunga" className="w-full h-12 px-4 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-xl outline-none text-sm font-bold" value={formData.namaPasangan} onChange={(e) => setFormData({...formData, namaPasangan: e.target.value})} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Waktu</label>
+                      <input required type="time" className="w-full h-12 px-3 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-xl outline-none text-sm font-bold" value={formData.waktuAcara} onChange={(e) => setFormData({...formData, waktuAcara: e.target.value})} />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Lokasi</label>
+                      <input required type="text" placeholder="Gedung" className="w-full h-12 px-3 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-xl outline-none text-sm font-bold" value={formData.lokasiAcara} onChange={(e) => setFormData({...formData, lokasiAcara: e.target.value})} />
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Brief Tambahan</label>
+                  <textarea rows="2" placeholder="Link Pinterest atau catatan..." className="w-full p-4 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-xl outline-none resize-none text-sm font-bold" value={formData.brief} onChange={(e) => setFormData({...formData, brief: e.target.value})}></textarea>
+                </div>
+              </div>
+
+              <button type="submit" disabled={isSubmitting} className={`w-full h-14 text-white rounded-2xl font-bold shadow-lg transition-all flex items-center justify-center gap-3 text-sm tracking-widest uppercase ${isSubmitting ? 'bg-slate-400' : 'bg-rose-500 hover:bg-rose-600 active:scale-[0.98] shadow-rose-200'}`}>
+                {isSubmitting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><MessageCircle size={20} fill="white" /> Konfirmasi Booking</>}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Footer */}
+      <footer className="mt-12 py-12 px-6 bg-white border-t border-slate-100 text-center relative overflow-hidden">
+        <div className="relative z-10 max-w-sm mx-auto">
+          <div className="flex items-center justify-center gap-2 mb-6 transition-all hover:scale-105 active:scale-95 cursor-pointer">
+            <div className="w-8 h-8 bg-rose-500 rounded-xl flex items-center justify-center text-white rotate-3 shadow-md">
+               <Camera size={16} />
+            </div>
+            <h1 className="text-xl font-bold italic tracking-tighter uppercase">ETERNAL<span className="text-rose-500">LENS</span></h1>
+          </div>
+          <p className="text-slate-400 text-xs sm:text-sm mb-10 font-bold italic leading-relaxed px-4">"Abadikan setiap detail berharga lewat lensa cinematic kami untuk kenangan yang abadi."</p>
+          <div className="flex justify-center gap-5">
+            <div className="w-11 h-11 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 shadow-sm transition-all active:scale-90"><Instagram size={20} /></div>
+          </div>
+          <p className="mt-12 text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">© 2024 Eternal Lens • Jakarta</p>
+        </div>
+        <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-rose-50 rounded-full blur-[100px] opacity-60"></div>
+        <div className="absolute -right-20 -top-20 w-64 h-64 bg-rose-50 rounded-full blur-[100px] opacity-60"></div>
+      </footer>
+
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .animate-in { animation-duration: 300ms; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+        input[type="time"]::-webkit-calendar-picker-indicator { background: transparent; bottom: 0; color: transparent; cursor: pointer; height: auto; left: 0; position: absolute; right: 0; top: 0; width: auto; }
+      `}</style>
+    </div>
+  );
+};
+
+export default App;
