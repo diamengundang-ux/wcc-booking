@@ -47,17 +47,9 @@
             font-weight: 800;
             letter-spacing: 0.1em;
         }
-        input[type="time"]::-webkit-calendar-picker-indicator {
-            background: transparent;
-            bottom: 0;
-            color: transparent;
-            cursor: pointer;
-            height: auto;
-            left: 0;
-            position: absolute;
-            right: 0;
-            top: 0;
-            width: auto;
+        /* Style input time agar lebih bersih tanpa merusak fungsionalitas */
+        input[type="time"] {
+            min-height: 3rem;
         }
     </style>
 </head>
@@ -95,7 +87,7 @@
             { id: 'deluxe', name: 'Deluxe Package', originalPrice: 'Rp 1.200.000', price: 'Rp 649.000', description: 'Layanan VIP dengan dua kreator untuk sudut pandang yang lebih lengkap.', features: ['3-4 Jam Standby (Akad/Pemberkatan/Resepsi)', '1 Profesional Content Creators', 'Undangan Website Exclusive', 'Up to 15 Real Time Story Clips', '1 Edited Cinematic Reels/TikTok (60s)', 'Shoot On Iphone 15 Pro', 'Buku Tamu Digital', 'Instagram Takeover (Admin Posting)', 'ALL Raw Files (Unedited)', 'Pengiriman via Google Drive/iCloud'] }
         ];
 
-        // Komponen Ikon SVG Murni (Anti-Crash) dengan warna branding baru
+        // Komponen Ikon SVG Murni
         const Icons = {
             Camera: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>,
             Zap: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
@@ -130,7 +122,7 @@
                 namaPasangan: '', 
                 waktuAcara: '', 
                 lokasiAcara: '', 
-                mapsUrl: '', // Tambahkan field mapsUrl
+                mapsUrl: '',
                 paket: 'signature', 
                 brief: '' 
             });
@@ -170,7 +162,8 @@
                 if (d < today) return 0;
                 const dateStr = d.toDateString();
                 const isBooked = bookings.some(b => {
-                    const bookedDate = b.tanggalAcaraTimestamp?.toDate ? b.tanggalAcaraTimestamp.toDate() : new Date(b.tanggalAcaraTimestamp);
+                    if (!b.tanggalAcaraTimestamp) return false;
+                    const bookedDate = b.tanggalAcaraTimestamp.toDate ? b.tanggalAcaraTimestamp.toDate() : new Date(b.tanggalAcaraTimestamp);
                     return bookedDate.toDateString() === dateStr;
                 });
                 return isBooked ? 2 : 1;
@@ -206,7 +199,7 @@
                         tanggalAcaraTimestamp: firebase.firestore.Timestamp.fromDate(selectedDate),
                         waktuAcara: formData.waktuAcara,
                         lokasiAcara: formData.lokasiAcara,
-                        mapsUrl: formData.mapsUrl, // Simpan ke Firestore
+                        mapsUrl: formData.mapsUrl,
                         paket: selectedPaketObj?.name || formData.paket,
                         brief: formData.brief,
                         userId: user.uid,
@@ -419,7 +412,6 @@
                                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Lokasi</label>
                                             <input required type="text" placeholder="Gedung / Kota" className="w-full h-12 px-4 bg-slate-50 border-2 border-transparent focus:border-[#348fb4] focus:bg-white rounded-xl outline-none text-sm font-bold transition-all shadow-sm" value={formData.lokasiAcara} onChange={(e) => setFormData({...formData, lokasiAcara: e.target.value})} />
                                         </div>
-                                        {/* --- FIELD GOOGLE MAPS BARU --- */}
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1 flex items-center gap-1.5"><Icons.MapPin className="text-[#348fb4] w-3 h-3" /> Link Google Maps Lokasi</label>
                                             <input type="url" placeholder="https://maps.app.goo.gl/..." className="w-full h-12 px-4 bg-slate-50 border-2 border-transparent focus:border-[#348fb4] focus:bg-white rounded-xl outline-none text-sm font-bold transition-all shadow-sm" value={formData.mapsUrl} onChange={(e) => setFormData({...formData, mapsUrl: e.target.value})} />
