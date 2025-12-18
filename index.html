@@ -226,7 +226,7 @@
                         userId: user.uid,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
-                    const message = `*NEW BOOKING WCC REQUEST* 📸✨\n\nTanggal: ${formatID(selectedDate)}\n💍 Pasangan: ${formData.namaPasangan}\n🕒 Waktu: ${formData.waktuAcara}\n📍 Lokasi: ${formData.lokasiAcara}\n🗺️ Maps: ${formData.mapsUrl || '-'}\n📦 Paket: ${selectedPaketObj?.name || formData.paket}\n📝 Brief: ${formData.brief || '-'}`;
+                    const message = `*NEW BOOKING WCC REQUEST* \n\nTanggal: ${formatID(selectedDate)}\n Pasangan: ${formData.namaPasangan}\n Waktu: ${formData.waktuAcara}\n Lokasi: ${formData.lokasiAcara}\n Maps: ${formData.mapsUrl || '-'}\n Paket: ${selectedPaketObj?.name || formData.paket}\n Brief: ${formData.brief || '-'}`;
                     window.open(`https://wa.me/${ADMIN_PHONE}?text=${encodeURIComponent(message)}`, '_blank');
                     setShowFormModal(false);
                     setIsSubmitting(false);
