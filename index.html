@@ -32,7 +32,7 @@
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .animate-in { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { 
-            from { opacity: 0; transform: translateY(8px); } 
+            from { opacity: 0; transform: translateY(10px); } 
             to { opacity: 1; transform: translateY(0); } 
         }
         .snap-x { scroll-snap-type: x mandatory; }
@@ -71,7 +71,9 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
         const appId = 'wcc-booking-v1';
-        const ADMIN_PHONE = "628123456789";
+        
+        // --- UPDATE NOMOR ADMIN ---
+        const ADMIN_PHONE = "6285924540663";
 
         const PACKAGES = [
             { id: 'lite', name: 'Lite Package', originalPrice: 'Rp 1.800.000', price: 'Rp 1.500.000', description: 'Pilihan ekonomis untuk acara durasi pendek dengan hasil maksimal.', features: ['3-4 Jam Standby (Akad/Engagement)', '1 Profesional Content Creator', '10-15 Real Time Story Clips', '1 Edited Cinematic Reel (15-30s)', 'Seluruh Raw Files (Unedited)', 'Pengiriman via Google Drive/iCloud'] },
@@ -79,7 +81,6 @@
             { id: 'deluxe', name: 'Deluxe Package', originalPrice: 'Rp 5.500.000', price: 'Rp 4.000.000', description: 'Layanan VIP dengan dua kreator untuk sudut pandang yang lebih lengkap.', features: ['8-10 Jam Standby (Full Day)', '2 Profesional Content Creators', 'Unlimited Real Time Story Clips', '5 Edited Cinematic Reels/TikTok', 'Same Day Edit Video Highlight', 'Instagram Takeover (Admin Posting)', 'Seluruh Raw Files (Unedited)', 'Prioritas Pengiriman (Instan)'] }
         ];
 
-        // Custom SVG Icons (Menghindari ketergantungan pada Lucide JS yang bikin crash)
         const Icons = {
             Camera: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>,
             Zap: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
@@ -112,16 +113,21 @@
             const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
             const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
 
-            // 1. Inisialisasi Auth
             React.useEffect(() => {
-                auth.signInAnonymously()
-                    .then(() => setAuthError(null))
-                    .catch(e => setAuthError(e.message));
+                const initAuth = async () => {
+                    try {
+                        await auth.signInAnonymously();
+                        setAuthError(null);
+                    } catch (err) {
+                        console.error("Firebase Auth Error:", err);
+                        setAuthError(err.message);
+                    }
+                };
+                initAuth();
                 const unsubscribe = auth.onAuthStateChanged(setUser);
                 return () => unsubscribe();
             }, []);
 
-            // 2. Data Real-time
             React.useEffect(() => {
                 if (!user) return;
                 const unsubscribe = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('bookings')
@@ -156,6 +162,14 @@
                 return dates;
             }, []);
 
+            const handleDateClick = (date) => {
+                const status = getStatus(date.getDate(), date.getMonth(), date.getFullYear());
+                setSelectedDate(date);
+                if (status === 0) return;
+                if (status === 2) { setShowAlertModal(true); } 
+                else { setShowFormModal(true); }
+            };
+
             const handleFormSubmit = async (e) => {
                 e.preventDefault();
                 if (!user || isSubmitting) return;
@@ -163,53 +177,62 @@
                 const selectedPaketObj = PACKAGES.find(p => p.id === formData.paket);
                 try {
                     await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('bookings').add({
-                        ...formData,
+                        namaPasangan: formData.namaPasangan,
                         tanggalAcaraText: formatID(selectedDate),
                         tanggalAcaraTimestamp: firebase.firestore.Timestamp.fromDate(selectedDate),
+                        waktuAcara: formData.waktuAcara,
+                        lokasiAcara: formData.lokasiAcara,
+                        paket: selectedPaketObj?.name || formData.paket,
+                        brief: formData.brief,
+                        userId: user.uid,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
-                    const message = `*NEW BOOKING WCC REQUEST*\n\nTanggal: ${formatID(selectedDate)}\n💍 Pasangan: ${formData.namaPasangan}\n🕒 Waktu: ${formData.waktuAcara}\n📍 Lokasi: ${formData.lokasiAcara}\n📦 Paket: ${selectedPaketObj?.name}`;
+                    const message = `*NEW BOOKING WCC REQUEST* 📸✨\n\nTanggal: ${formatID(selectedDate)}\n💍 Pasangan: ${formData.namaPasangan}\n🕒 Waktu: ${formData.waktuAcara}\n📍 Lokasi: ${formData.lokasiAcara}\n📦 Paket: ${selectedPaketObj?.name || formData.paket}\n📝 Brief: ${formData.brief || '-'}`;
                     window.open(`https://wa.me/${ADMIN_PHONE}?text=${encodeURIComponent(message)}`, '_blank');
                     setShowFormModal(false);
                     setIsSubmitting(false);
                     setFormData({ namaPasangan: '', waktuAcara: '', lokasiAcara: '', paket: 'signature', brief: '' });
                 } catch (error) { 
-                    alert("Error: " + error.message);
+                    console.error(error); 
                     setIsSubmitting(false); 
                 }
             };
 
             return (
-                <div className="min-h-screen pb-12 animate-in bg-[#FDFCFB]">
+                <div className="min-h-screen pb-12 overflow-x-hidden antialiased bg-[#FDFCFB]">
                     {authError && (
                         <div className="bg-amber-50 border-b border-amber-100 px-4 py-2 flex items-center justify-center gap-2 text-[10px] font-bold text-amber-700">
                             <span>⚠️ Koneksi database terbatas. Pastikan 'Anonymous Auth' aktif di Firebase Console.</span>
                         </div>
                     )}
 
-                    <header className="bg-white/90 backdrop-blur-md border-b border-slate-100 sticky top-0 z-40 px-4 py-3 sm:py-4 flex justify-between items-center shadow-sm">
+                    <header className="bg-white/90 backdrop-blur-md border-b border-slate-100 sticky top-0 z-40 px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center shadow-sm">
                         <div className="flex items-center gap-2">
-                            <div className="w-9 h-9 bg-rose-500 rounded-xl flex items-center justify-center text-white shadow-lg">
+                            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-rose-500 rounded-xl flex items-center justify-center text-white shadow-lg">
                                 <Icons.Camera />
                             </div>
-                            <h1 className="text-lg font-bold tracking-tight italic uppercase">ETERNAL<span className="text-rose-500">LENS</span></h1>
+                            <h1 className="text-lg sm:text-xl font-bold tracking-tight italic uppercase">ETERNAL<span className="text-rose-500">LENS</span></h1>
                         </div>
                         <button className="p-2 text-rose-500 active:scale-90 transition-transform"><Icons.Instagram /></button>
                     </header>
 
-                    <main className="max-w-2xl mx-auto px-4 py-6 sm:py-12">
+                    <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
                         <section className="mb-8 sm:mb-10 text-center">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-rose-50 text-rose-600 text-[10px] font-bold rounded-full mb-4 border border-rose-100 uppercase tracking-widest">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-rose-50 text-rose-600 text-[10px] font-bold rounded-full mb-4 tracking-widest uppercase border border-rose-100 shadow-sm">
                                 <Icons.Zap /> Real-time Cloud Booking
                             </div>
-                            <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 mb-2 tracking-tight">Abadikan Momen Terindahmu</h2>
-                            <p className="text-slate-500 text-sm max-w-sm mx-auto opacity-80 leading-relaxed">Pilih tanggal pernikahanmu dan amankan slot dokumentasi cinematic kamu secara langsung.</p>
+                            <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 mb-2 tracking-tight px-2">
+                                Abadikan Momen Terindahmu
+                            </h2>
+                            <p className="text-slate-500 text-sm max-w-sm mx-auto px-4 font-medium opacity-80 leading-relaxed">
+                                Pilih tanggal pernikahanmu dan amankan slot dokumentasi cinematic kamu secara langsung.
+                            </p>
                         </section>
 
                         <section className="mb-8">
                             <div className="flex justify-between items-center mb-4 px-1">
                                 <h3 className="font-bold text-slate-800 text-sm sm:text-base">Tersedia Minggu Ini</h3>
-                                <button onClick={() => setShowCalendarModal(true)} className="text-rose-500 text-[11px] font-bold flex items-center gap-1 uppercase hover:underline">
+                                <button onClick={() => setShowCalendarModal(true)} className="text-rose-500 text-[11px] font-bold flex items-center gap-1 uppercase tracking-wider hover:underline">
                                     <Icons.Calendar /> LIHAT KALENDER
                                 </button>
                             </div>
@@ -218,7 +241,7 @@
                                     const status = getStatus(date.getDate(), date.getMonth(), date.getFullYear());
                                     const isSelected = selectedDate.toDateString() === date.toDateString();
                                     return (
-                                        <button key={idx} onClick={() => { setSelectedDate(date); if(status===2) setShowAlertModal(true); else setShowFormModal(true); }} className={`flex-shrink-0 w-16 h-24 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 transform active:scale-95 border-2 snap-center ${isSelected ? 'border-rose-500 bg-rose-500 text-white shadow-lg' : 'border-transparent bg-white shadow-sm'}`}>
+                                        <button key={idx} onClick={() => handleDateClick(date)} className={`flex-shrink-0 w-16 h-24 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 transform active:scale-95 border-2 snap-center ${isSelected ? 'border-rose-500 bg-rose-500 text-white shadow-lg' : 'border-transparent bg-white shadow-sm'}`}>
                                             <span className={`text-[10px] font-bold uppercase mb-1 ${isSelected ? 'text-rose-100' : 'text-slate-400'}`}>{new Intl.DateTimeFormat('id-ID', { weekday: 'short' }).format(date)}</span>
                                             <span className="text-lg font-black">{date.getDate()}</span>
                                             <div className={`mt-2 w-1.5 h-1.5 rounded-full ${status === 2 ? 'bg-red-400 animate-pulse' : status === 1 ? 'bg-emerald-400' : 'bg-slate-200'}`} />
@@ -230,7 +253,7 @@
 
                         <div className="flex justify-center gap-4 sm:gap-6 mb-10 text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-white/50 py-3 rounded-full border border-slate-100 mx-2 shadow-sm">
                             <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Tersedia</div>
-                            <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-red-400" /> Booked</div>
+                            <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-red-400" /> Full Booked</div>
                             <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-slate-300" /> No Slot</div>
                         </div>
 
@@ -239,10 +262,10 @@
                                 <div className="relative z-10">
                                     <div className="w-10 h-10 bg-rose-500/20 text-rose-500 rounded-xl flex items-center justify-center mb-4"><Icons.Heart fill="currentColor" /></div>
                                     <h4 className="text-xl font-bold mb-2 tracking-tight italic uppercase">Kenangan Digital</h4>
-                                    <p className="text-slate-400 text-xs sm:text-sm mb-6 opacity-80 leading-relaxed font-medium">Kami menceritakan kebahagiaanmu lewat lensa yang estetik dan instan.</p>
+                                    <p className="text-slate-400 text-xs sm:text-sm mb-6 leading-relaxed font-medium opacity-80">Kami menceritakan kebahagiaanmu lewat lensa yang estetik dan instan.</p>
                                     <div className="grid grid-cols-2 gap-3">
-                                        <div className="flex items-center gap-2 bg-white/5 p-2.5 rounded-xl border border-white/10"><Icons.Zap /><span className="text-[9px] font-bold uppercase tracking-wider text-rose-500">Fast Edit</span></div>
-                                        <div className="flex items-center gap-2 bg-white/5 p-2.5 rounded-xl border border-white/10"><Icons.Smartphone /><span className="text-[9px] font-bold uppercase tracking-wider text-rose-500">Vertical</span></div>
+                                        <div className="flex items-center gap-2 bg-white/5 p-2.5 rounded-xl border border-white/10"><Icons.Zap className="text-rose-500" /><span className="text-[9px] font-bold uppercase tracking-wider">Fast Edit</span></div>
+                                        <div className="flex items-center gap-2 bg-white/5 p-2.5 rounded-xl border border-white/10"><Icons.Smartphone className="text-rose-500" /><span className="text-[9px] font-bold uppercase tracking-wider">Vertical</span></div>
                                     </div>
                                 </div>
                                 <div className="absolute -right-20 -bottom-20 w-64 h-64 bg-rose-500/10 rounded-full blur-[80px]"></div>
@@ -250,26 +273,58 @@
                         </section>
                     </main>
 
-                    {/* Footer */}
-                    <footer className="mt-12 py-12 px-6 border-t border-slate-100 text-center relative overflow-hidden bg-white">
-                        <div className="relative z-10 max-w-sm mx-auto">
-                            <div className="flex items-center justify-center gap-2 mb-6">
-                                <div className="w-8 h-8 bg-rose-500 rounded-xl flex items-center justify-center text-white rotate-3 shadow-md"><Icons.Camera /></div>
-                                <h1 className="text-xl font-black italic tracking-tighter uppercase">ETERNAL<span className="text-rose-500">LENS</span></h1>
+                    {showCalendarModal && (
+                        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/40 backdrop-blur-sm animate-in">
+                            <div className="bg-white w-full max-w-md rounded-t-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl animate-in border-t border-slate-50 overflow-hidden">
+                                <div className="flex justify-between items-center mb-6 px-1">
+                                    <h3 className="text-lg sm:text-xl font-bold text-slate-900 uppercase italic">
+                                        {new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(new Date(viewYear, viewMonth))}
+                                    </h3>
+                                    <div className="flex gap-1 sm:gap-2">
+                                        <button onClick={() => { if(viewMonth === 0){ setViewMonth(11); setViewYear(viewYear - 1); } else { setViewMonth(viewMonth - 1); } }} className="p-2.5 hover:bg-slate-100 rounded-full"><Icons.ChevronLeft /></button>
+                                        <button onClick={() => { if(viewMonth === 11){ setViewMonth(0); setViewYear(viewYear + 1); } else { setViewMonth(viewMonth + 1); } }} className="p-2.5 hover:bg-slate-100 rounded-full"><Icons.ChevronRight /></button>
+                                        <button onClick={() => setShowCalendarModal(false)} className="p-2.5 ml-1 bg-slate-900 text-white rounded-full hover:bg-rose-500 transition-colors"><Icons.X /></button>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-4">
+                                    {['M', 'S', 'S', 'R', 'K', 'J', 'S'].map((day, idx) => (
+                                        <div key={idx} className="text-center text-[10px] font-bold text-slate-400 py-1 uppercase">{day}</div>
+                                    ))}
+                                    {Array.from({ length: getFirstDayOfMonth(viewYear, viewMonth) }).map((_, i) => <div key={i} />)}
+                                    {Array.from({ length: getDaysInMonth(viewYear, viewMonth) }).map((_, i) => {
+                                        const dayNum = i + 1;
+                                        const status = getStatus(dayNum, viewMonth, viewYear);
+                                        const isSelected = selectedDate.getDate() === dayNum && selectedDate.getMonth() === viewMonth && selectedDate.getFullYear() === viewYear;
+                                        return (
+                                            <button key={dayNum} onClick={() => { handleDateClick(new Date(viewYear, viewMonth, dayNum)); setShowCalendarModal(false); }} disabled={status === 0} className={`aspect-square rounded-xl flex items-center justify-center text-sm font-bold transition-all relative ${status === 2 ? 'bg-red-50 text-red-500' : status === 1 ? 'bg-emerald-50 text-emerald-600' : 'text-slate-200 cursor-not-allowed'} ${isSelected ? 'ring-2 ring-rose-500 ring-offset-1 bg-rose-500 !text-white' : ''}`}>
+                                                {dayNum}
+                                                {status === 2 && <div className="absolute bottom-1 w-1 h-1 bg-red-400 rounded-full" />}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                            <p className="text-slate-400 text-xs sm:text-sm mb-10 font-bold italic leading-relaxed px-4 opacity-70">"Abadikan setiap detail berharga lewat lensa cinematic kami untuk kenangan yang abadi."</p>
-                            <p className="mt-12 text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">© 2024 Eternal Lens • Jakarta</p>
                         </div>
-                    </footer>
+                    )}
 
-                    {/* MODAL FORM */}
+                    {showAlertModal && (
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm animate-in">
+                            <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-10 text-center shadow-2xl">
+                                <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6"><Icons.X strokeWidth={3} /></div>
+                                <h3 className="text-xl font-bold mb-2 text-slate-900 leading-none tracking-tight">Maaf kak!</h3>
+                                <p className="text-slate-400 text-sm mb-8 leading-relaxed font-bold opacity-80">Tanggal ini sudah Full Booked, silahkan cari tanggal cantik lainnya ya.</p>
+                                <button onClick={() => setShowAlertModal(false)} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-transform">OKE, SAYA CARI LAGI</button>
+                            </div>
+                        </div>
+                    )}
+
                     {showFormModal && (
-                        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in">
-                            <div className="bg-white w-full max-w-lg rounded-t-[2rem] sm:rounded-[2.5rem] p-6 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar pb-10">
+                        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/40 backdrop-blur-sm animate-in">
+                            <div className="bg-white w-full max-w-lg rounded-t-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar pb-10">
                                 <div className="flex justify-between items-start mb-6 px-1">
                                     <div>
-                                        <h3 className="text-xl font-bold text-slate-900 leading-none">Form Booking</h3>
-                                        <p className="text-rose-500 text-xs font-bold uppercase tracking-widest mt-2">{formatID(selectedDate)}</p>
+                                        <h3 className="text-xl sm:text-2xl font-bold text-slate-900 leading-none">Form Booking</h3>
+                                        <p className="text-rose-500 text-xs sm:text-sm font-bold uppercase tracking-widest mt-2">{formatID(selectedDate)}</p>
                                     </div>
                                     <button onClick={() => setShowFormModal(false)} className="p-2.5 bg-slate-100 text-slate-400 rounded-full hover:bg-slate-200 transition-colors"><Icons.X /></button>
                                 </div>
@@ -302,23 +357,25 @@
                                         </div>
                                     </div>
                                     <div className="space-y-4 pt-4 border-t border-slate-100">
-                                        <div>
-                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Nama Pasangan</label>
-                                            <input required type="text" placeholder="Andi & Bunga" className="w-full h-12 px-4 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-xl outline-none text-sm font-bold transition-all shadow-sm" value={formData.namaPasangan} onChange={(e) => setFormData({...formData, namaPasangan: e.target.value})} />
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-3">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
-                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Waktu</label>
-                                                <input required type="time" className="w-full h-12 px-3 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-xl outline-none text-sm font-bold transition-all shadow-sm" value={formData.waktuAcara} onChange={(e) => setFormData({...formData, waktuAcara: e.target.value})} />
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Nama Pasangan</label>
+                                                <input required type="text" placeholder="Andi & Bunga" className="w-full h-12 px-4 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-xl outline-none text-sm font-bold transition-all" value={formData.namaPasangan} onChange={(e) => setFormData({...formData, namaPasangan: e.target.value})} />
                                             </div>
-                                            <div>
-                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Lokasi</label>
-                                                <input required type="text" placeholder="Gedung" className="w-full h-12 px-4 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-xl outline-none text-sm font-bold transition-all shadow-sm" value={formData.lokasiAcara} onChange={(e) => setFormData({...formData, lokasiAcara: e.target.value})} />
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Waktu</label>
+                                                    <input required type="time" className="w-full h-12 px-3 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-xl outline-none text-sm font-bold transition-all" value={formData.waktuAcara} onChange={(e) => setFormData({...formData, waktuAcara: e.target.value})} />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Lokasi</label>
+                                                    <input required type="text" placeholder="Gedung" className="w-full h-12 px-4 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-xl outline-none text-sm font-bold transition-all" value={formData.lokasiAcara} onChange={(e) => setFormData({...formData, lokasiAcara: e.target.value})} />
+                                                </div>
                                             </div>
                                         </div>
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Brief Tambahan</label>
-                                            <textarea rows="2" placeholder="Link Pinterest atau catatan..." className="w-full p-4 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-xl outline-none resize-none text-sm font-bold transition-all shadow-sm" value={formData.brief} onChange={(e) => setFormData({...formData, brief: e.target.value})}></textarea>
+                                            <textarea rows="2" placeholder="Link Pinterest atau catatan..." className="w-full p-4 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-xl outline-none resize-none text-sm font-bold transition-all" value={formData.brief} onChange={(e) => setFormData({...formData, brief: e.target.value})}></textarea>
                                         </div>
                                     </div>
                                     <button type="submit" disabled={isSubmitting} className={`w-full h-14 text-white rounded-2xl font-bold shadow-lg transition-all flex items-center justify-center gap-3 text-sm tracking-widest uppercase active:scale-95 ${isSubmitting ? 'bg-slate-400' : 'bg-rose-500 hover:bg-rose-600 shadow-rose-200'}`}>
@@ -329,50 +386,18 @@
                         </div>
                     )}
 
-                    {showCalendarModal && (
-                        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/40 backdrop-blur-sm animate-in">
-                            <div className="bg-white w-full max-w-md rounded-t-[2rem] sm:rounded-[2.5rem] p-8 shadow-2xl animate-in border-t border-slate-50 overflow-hidden">
-                                <div className="flex justify-between items-center mb-6 px-1">
-                                    <h3 className="text-lg sm:text-xl font-bold text-slate-900 uppercase italic">
-                                        {new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(new Date(viewYear, viewMonth))}
-                                    </h3>
-                                    <div className="flex gap-1 sm:gap-2">
-                                        <button onClick={() => { if(viewMonth === 0){ setViewMonth(11); setViewYear(viewYear - 1); } else { setViewMonth(viewMonth - 1); } }} className="p-2.5 hover:bg-slate-100 rounded-full"><Icons.ChevronLeft /></button>
-                                        <button onClick={() => { if(viewMonth === 11){ setViewMonth(0); setViewYear(viewYear + 1); } else { setViewMonth(viewMonth + 1); } }} className="p-2.5 hover:bg-slate-100 rounded-full"><Icons.ChevronRight /></button>
-                                        <button onClick={() => setShowCalendarModal(false)} className="p-2.5 ml-1 bg-slate-900 text-white rounded-full hover:bg-rose-500 transition-colors"><Icons.X /></button>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-4">
-                                    {['M', 'S', 'S', 'R', 'K', 'J', 'S'].map((day, idx) => (
-                                        <div key={idx} className="text-center text-[10px] font-bold text-slate-400 py-1 uppercase">{day}</div>
-                                    ))}
-                                    {Array.from({ length: getFirstDayOfMonth(viewYear, viewMonth) }).map((_, i) => <div key={i} />)}
-                                    {Array.from({ length: getDaysInMonth(viewYear, viewMonth) }).map((_, i) => {
-                                        const dayNum = i + 1;
-                                        const status = getStatus(dayNum, viewMonth, viewYear);
-                                        const isSelected = selectedDate.getDate() === dayNum && selectedDate.getMonth() === viewMonth && selectedDate.getFullYear() === viewYear;
-                                        return (
-                                            <button key={dayNum} onClick={() => { setSelectedDate(new Date(viewYear, viewMonth, dayNum)); setShowCalendarModal(false); if(status===2) setShowAlertModal(true); else setShowFormModal(true); }} disabled={status === 0} className={`aspect-square rounded-xl flex items-center justify-center text-sm font-bold transition-all relative ${status === 2 ? 'bg-red-50 text-red-500' : status === 1 ? 'bg-emerald-50 text-emerald-600' : 'text-slate-200 cursor-not-allowed'} ${isSelected ? 'ring-2 ring-rose-500 ring-offset-1 bg-rose-500 !text-white' : ''}`}>
-                                                {dayNum}
-                                                {status === 2 && <div className="absolute bottom-1 w-1 h-1 bg-red-400 rounded-full" />}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
+                    <footer className="mt-12 py-12 px-6 border-t border-slate-100 text-center relative overflow-hidden">
+                        <div className="relative z-10 max-w-sm mx-auto">
+                            <div className="flex items-center justify-center gap-2 mb-6 transition-all hover:scale-105 active:scale-95 cursor-pointer">
+                                <div className="w-8 h-8 bg-rose-500 rounded-xl flex items-center justify-center text-white rotate-3 shadow-md"><Icons.Camera /></div>
+                                <h1 className="text-xl font-bold italic tracking-tighter uppercase">ETERNAL<span className="text-rose-500">LENS</span></h1>
                             </div>
+                            <p className="text-slate-400 text-xs sm:text-sm mb-10 font-bold italic leading-relaxed px-4 opacity-70">"Abadikan setiap detail berharga lewat lensa cinematic kami untuk kenangan yang abadi."</p>
+                            <p className="mt-12 text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">© 2024 Eternal Lens • Jakarta</p>
                         </div>
-                    )}
-
-                    {showAlertModal && (
-                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm animate-in">
-                            <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-10 text-center shadow-2xl">
-                                <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6"><Icons.X /></div>
-                                <h3 className="text-xl font-bold mb-2 text-slate-900 leading-none tracking-tight">Maaf kak!</h3>
-                                <p className="text-slate-400 text-sm mb-8 leading-relaxed font-bold opacity-80">Tanggal ini sudah Full Booked, silahkan cari tanggal cantik lainnya ya.</p>
-                                <button onClick={() => setShowAlertModal(false)} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-transform">OKE, SAYA CARI LAGI</button>
-                            </div>
-                        </div>
-                    )}
+                        <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-rose-50 rounded-full blur-[100px] opacity-60"></div>
+                        <div className="absolute -right-20 -top-20 w-64 h-64 bg-rose-50 rounded-full blur-[100px] opacity-60"></div>
+                    </footer>
                 </div>
             );
         };
