@@ -19,7 +19,7 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- Firebase SDK (Compat Version - Sangat stabil untuk satu file) -->
+    <!-- Firebase SDK (Compat Version) -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -49,18 +49,6 @@
             color: #f43f5e;
             font-weight: 800;
             letter-spacing: 0.1em;
-        }
-        input[type="time"]::-webkit-calendar-picker-indicator {
-            background: transparent;
-            bottom: 0;
-            color: transparent;
-            cursor: pointer;
-            height: auto;
-            left: 0;
-            position: absolute;
-            right: 0;
-            top: 0;
-            width: auto;
         }
     </style>
 </head>
@@ -94,7 +82,6 @@
             { id: 'deluxe', name: 'Deluxe Package', originalPrice: 'Rp 5.500.000', price: 'Rp 4.000.000', description: 'Layanan VIP dengan dua kreator untuk sudut pandang yang lebih lengkap.', features: ['8-10 Jam Standby (Full Day)', '2 Profesional Content Creators', 'Unlimited Real Time Story Clips', '5 Edited Cinematic Reels/TikTok', 'Same Day Edit Video Highlight', 'Instagram Takeover (Admin Posting)', 'Seluruh Raw Files (Unedited)', 'Prioritas Pengiriman (Instan)'] }
         ];
 
-        // Komponen Ikon Pembantu
         const Icon = ({ name, className = "", fill = "none", strokeWidth = 2 }) => {
             React.useEffect(() => {
                 if (window.lucide) window.lucide.createIcons();
@@ -120,7 +107,6 @@
             const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
             const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
 
-            // 1. Inisialisasi Auth
             React.useEffect(() => {
                 const initAuth = async () => {
                     try {
@@ -136,7 +122,6 @@
                 return () => unsubscribe();
             }, []);
 
-            // 2. Data Real-time
             React.useEffect(() => {
                 if (!user) return;
                 const unsubscribe = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('bookings')
@@ -208,7 +193,6 @@
 
             return (
                 <div className="min-h-screen pb-12 overflow-x-hidden antialiased bg-[#FDFCFB]">
-                    {/* Koneksi Status Error Info */}
                     {authError && (
                         <div className="bg-amber-50 border-b border-amber-100 px-4 py-2 flex items-center justify-center gap-2 text-[10px] font-bold text-amber-700">
                             <Icon name="alert-circle" />
@@ -216,7 +200,6 @@
                         </div>
                     )}
 
-                    {/* Header */}
                     <header className="bg-white/90 backdrop-blur-md border-b border-slate-100 sticky top-0 z-40 px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center shadow-sm">
                         <div className="flex items-center gap-2">
                             <div className="w-9 h-9 sm:w-10 sm:h-10 bg-rose-500 rounded-xl flex items-center justify-center text-white shadow-lg">
@@ -228,7 +211,6 @@
                     </header>
 
                     <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
-                        {/* Hero */}
                         <section className="mb-8 sm:mb-10 text-center">
                             <div className="inline-flex items-center gap-2 px-3 py-1 bg-rose-50 text-rose-600 text-[10px] font-bold rounded-full mb-4 tracking-widest uppercase border border-rose-100">
                                 <Icon name="zap" className="w-3 h-3" /> Real-time Cloud Booking
@@ -241,7 +223,6 @@
                             </p>
                         </section>
 
-                        {/* 7 Days Strip */}
                         <section className="mb-8">
                             <div className="flex justify-between items-center mb-4 px-1">
                                 <h3 className="font-bold text-slate-800 text-sm sm:text-base">Tersedia Minggu Ini</h3>
@@ -264,14 +245,12 @@
                             </div>
                         </section>
 
-                        {/* Legend */}
                         <div className="flex justify-center gap-4 sm:gap-6 mb-10 text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-white/50 py-3 rounded-full border border-slate-100 mx-2 shadow-sm">
                             <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Tersedia</div>
                             <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-red-400" /> Full Booked</div>
                             <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-slate-300" /> No Slot</div>
                         </div>
 
-                        {/* Premium Highlights */}
                         <section className="space-y-4 px-1">
                             <div className="bg-slate-900 rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 text-white overflow-hidden relative shadow-xl">
                                 <div className="relative z-10">
@@ -288,7 +267,6 @@
                         </section>
                     </main>
 
-                    {/* MODAL: Calendar */}
                     {showCalendarModal && (
                         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/40 backdrop-blur-sm animate-in">
                             <div className="bg-white w-full max-w-md rounded-t-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl animate-in border-t border-slate-50 overflow-hidden">
@@ -323,10 +301,9 @@
                         </div>
                     )}
 
-                    {/* MODAL: Alert Booked */}
                     {showAlertModal && (
                         <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm animate-in">
-                            <div className="bg-white w-full max-w-sm rounded-[2rem] p-10 text-center shadow-2xl">
+                            <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-10 text-center shadow-2xl">
                                 <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6"><Icon name="x" strokeWidth={3} /></div>
                                 <h3 className="text-xl font-bold mb-2 text-slate-900">Maaf kak!</h3>
                                 <p className="text-slate-400 text-sm mb-8 leading-relaxed font-bold">Tanggal ini sudah Full Booked, silahkan cari tanggal cantik lainnya ya.</p>
@@ -335,7 +312,6 @@
                         </div>
                     )}
 
-                    {/* MODAL: Booking Form */}
                     {showFormModal && (
                         <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/40 backdrop-blur-sm animate-in">
                             <div className="bg-white w-full max-w-lg rounded-t-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar pb-10">
@@ -387,7 +363,7 @@
                                                 </div>
                                                 <div>
                                                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Lokasi</label>
-                                                    <input required type="text" placeholder="Gedung" className="w-full h-12 px-3 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-xl outline-none text-sm font-bold transition-all" value={formData.lokasiAcara} onChange={(e) => setFormData({...formData, lokasiAcara: e.target.value})} />
+                                                    <input required type="text" placeholder="Gedung" className="w-full h-12 px-4 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-xl outline-none text-sm font-bold transition-all" value={formData.lokasiAcara} onChange={(e) => setFormData({...formData, lokasiAcara: e.target.value})} />
                                                 </div>
                                             </div>
                                         </div>
@@ -404,7 +380,6 @@
                         </div>
                     )}
 
-                    {/* Footer */}
                     <footer className="mt-12 py-12 px-6 bg-white border-t border-slate-100 text-center relative overflow-hidden">
                         <div className="relative z-10 max-w-sm mx-auto">
                             <div className="flex items-center justify-center gap-2 mb-6 transition-all hover:scale-105 active:scale-95 cursor-pointer">
