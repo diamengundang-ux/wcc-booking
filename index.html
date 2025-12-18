@@ -408,12 +408,16 @@
                                             <input required type="time" className="w-full h-12 px-4 bg-slate-50 border-2 border-transparent focus:border-[#348fb4] focus:bg-white rounded-xl outline-none text-sm font-bold transition-all shadow-sm" value={formData.waktuAcara} onChange={(e) => setFormData({...formData, waktuAcara: e.target.value})} />
                                         </div>
                                         <div>
-                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Lokasi</label>
-                                            <input required type="text" placeholder="Gedung / Kota" className="w-full h-12 px-4 bg-slate-50 border-2 border-transparent focus:border-[#348fb4] focus:bg-white rounded-xl outline-none text-sm font-bold transition-all shadow-sm" value={formData.lokasiAcara} onChange={(e) => setFormData({...formData, lokasiAcara: e.target.value})} />
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Lokasi Acara</label>
+                                            <input required type="text" placeholder="Gedung/Hotel/Dll" className="w-full h-12 px-4 bg-slate-50 border-2 border-transparent focus:border-[#348fb4] focus:bg-white rounded-xl outline-none text-sm font-bold transition-all shadow-sm" value={formData.lokasiAcara} onChange={(e) => setFormData({...formData, lokasiAcara: e.target.value})} />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1 flex items-center gap-1.5"><Icons.MapPin className="text-[#348fb4] w-3 h-3" /> Link Google Maps Lokasi</label>
+                                            <input type="url" placeholder="https://maps.app.goo.gl/..." className="w-full h-12 px-4 bg-slate-50 border-2 border-transparent focus:border-[#348fb4] focus:bg-white rounded-xl outline-none text-sm font-bold transition-all shadow-sm" value={formData.mapsUrl} onChange={(e) => setFormData({...formData, mapsUrl: e.target.value})} />
                                         </div>
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Brief Tambahan</label>
-                                            <textarea rows="3" placeholder="Link Pinterest atau catatan khusus..." className="w-full p-4 bg-slate-50 border-2 border-transparent focus:border-[#348fb4] focus:bg-white rounded-xl outline-none resize-none text-sm font-bold transition-all shadow-sm" value={formData.brief} onChange={(e) => setFormData({...formData, brief: e.target.value})}></textarea>
+                                            <textarea rows="3" placeholder="Link Video Referensi atau catatan khusus..." className="w-full p-4 bg-slate-50 border-2 border-transparent focus:border-[#348fb4] focus:bg-white rounded-xl outline-none resize-none text-sm font-bold transition-all shadow-sm" value={formData.brief} onChange={(e) => setFormData({...formData, brief: e.target.value})}></textarea>
                                         </div>
                                     </div>
 
