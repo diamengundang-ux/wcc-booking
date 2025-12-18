@@ -72,8 +72,10 @@
         const db = firebase.firestore();
         const appId = 'wcc-booking-v1';
         
-        // --- UPDATE NOMOR ADMIN ---
+        // --- KONFIGURASI ADMIN & BRAND ---
         const ADMIN_PHONE = "6285924540663";
+        // GANTI URL DI BAWAH INI DENGAN LINK LOGO ANDA (SVG/PNG/JPG)
+        const LOGO_URL = "https://placehold.co/400x100/f43f5e/white?text=DIAMENGUNDANG+WCC"; 
 
         const PACKAGES = [
             { id: 'lite', name: 'Lite Package', originalPrice: 'Rp 500.000', price: 'Rp 299.000', description: 'Pilihan ekonomis untuk acara durasi pendek dengan hasil maksimal.', features: ['3-4 Jam Standby (Akad/Pemberkatan/Resepsi)', '1 Profesional Content Creator', 'Up to 5 Real Time Story Clips', '1 Edited Cinematic Reel (60s)', 'Shoot On Iphone 15 Pro', 'ALL Raw Files (Unedited)', 'Pengiriman via Google Drive/iCloud'] },
@@ -145,8 +147,7 @@
                 if (d < today) return 0;
                 const dateStr = d.toDateString();
                 const isBooked = bookings.some(b => {
-                    if (!b.tanggalAcaraTimestamp) return false;
-                    const bookedDate = b.tanggalAcaraTimestamp.toDate ? b.tanggalAcaraTimestamp.toDate() : new Date(b.tanggalAcaraTimestamp);
+                    const bookedDate = b.tanggalAcaraTimestamp?.toDate ? b.tanggalAcaraTimestamp.toDate() : new Date(b.tanggalAcaraTimestamp);
                     return bookedDate.toDateString() === dateStr;
                 });
                 return isBooked ? 2 : 1;
@@ -207,11 +208,14 @@
                     )}
 
                     <header className="bg-white/90 backdrop-blur-md border-b border-slate-100 sticky top-0 z-40 px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center shadow-sm">
-                        <div className="flex items-center gap-2">
-                            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-rose-500 rounded-xl flex items-center justify-center text-white shadow-lg">
-                                <Icons.Camera />
-                            </div>
-                            <h1 className="text-lg sm:text-xl font-bold tracking-tight italic uppercase">Diamnengundang<span className="text-rose-500">WCC</span></h1>
+                        <div className="flex items-center gap-3">
+                            <img 
+                                src=https://app.diamengundang.id/wp-content/uploads/2025/12/Diamengundang-365px-w-02.png
+                                alt="Logo Diamengundang" 
+                                className="h-8 sm:h-10 w-auto object-contain"
+                                onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='block'; }}
+                            />
+                            <span className="hidden text-lg font-bold tracking-tight italic uppercase">Diamengundang<span className="text-rose-500">WCC</span></span>
                         </div>
                         <button className="p-2 text-rose-500 active:scale-90 transition-transform"><Icons.Instagram /></button>
                     </header>
@@ -230,13 +234,13 @@
                         </section>
 
                         <section className="mb-8">
-                            <div className="flex justify-between items-center mb-4 px-1">
+                            <div className="flex justify-between items-center mb-4 px-1 max-w-lg mx-auto">
                                 <h3 className="font-bold text-slate-800 text-sm sm:text-base">Tersedia Minggu Ini</h3>
                                 <button onClick={() => setShowCalendarModal(true)} className="text-rose-500 text-[11px] font-bold flex items-center gap-1 uppercase tracking-wider hover:underline">
                                     <Icons.Calendar /> LIHAT KALENDER
                                 </button>
                             </div>
-                            <div className="flex gap-3 overflow-x-auto pb-4 px-1 no-scrollbar snap-x snap-mandatory">
+                            <div className="flex gap-3 overflow-x-auto pb-4 px-1 no-scrollbar snap-x snap-mandatory sm:justify-center">
                                 {dateStrip.map((date, idx) => {
                                     const status = getStatus(date.getDate(), date.getMonth(), date.getFullYear());
                                     const isSelected = selectedDate.toDateString() === date.toDateString();
@@ -257,7 +261,6 @@
                             <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-slate-300" /> No Slot</div>
                         </div>
 
-                        {/* --- KARTU BARU (MODERN, CLEAN, ELEGANT) --- */}
                         <section className="space-y-4 px-1">
                             <div className="bg-white border border-rose-100 rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 text-slate-800 overflow-hidden relative shadow-sm hover:shadow-md transition-shadow">
                                 <div className="relative z-10">
@@ -364,7 +367,6 @@
                                         </div>
                                     </div>
                                     
-                                    {/* --- BAGIAN FORM DATA (VERTICAL LAYOUT) --- */}
                                     <div className="space-y-4 pt-4 border-t border-slate-100">
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Tanggal Acara</label>
@@ -398,11 +400,19 @@
 
                     <footer className="mt-12 py-12 px-6 border-t border-slate-100 text-center relative overflow-hidden bg-white">
                         <div className="relative z-10 max-w-sm mx-auto">
-                            <div className="flex items-center justify-center gap-2 mb-6 transition-all hover:scale-105 active:scale-95 cursor-pointer">
-                                <div className="w-8 h-8 bg-rose-500 rounded-xl flex items-center justify-center text-white rotate-3 shadow-md"><Icons.Camera /></div>
-                                <h1 className="text-xl font-bold italic tracking-tighter uppercase">Diamengundang<span className="text-rose-500">WCC</span></h1>
+                            <div className="flex flex-col items-center gap-4 mb-6 transition-all hover:scale-105 active:scale-95 cursor-pointer">
+                                <img 
+                                    src=https://app.diamengundang.id/wp-content/uploads/2025/12/Diamengundang-365px-w-02.png
+                                    alt="Logo Diamengundang Footer" 
+                                    className="h-10 sm:h-12 w-auto object-contain"
+                                    onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='block'; }}
+                                />
+                                <span className="hidden text-xl font-bold italic tracking-tighter uppercase text-slate-800">Diamengundang<span className="text-rose-500">WCC</span></span>
                             </div>
                             <p className="text-slate-400 text-xs sm:text-sm mb-10 font-bold italic leading-relaxed px-4 opacity-70">"Abadikan setiap detail berharga lewat lensa cinematic kami untuk kenangan yang abadi."</p>
+                            <div className="flex justify-center gap-5">
+                                <div className="w-11 h-11 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 shadow-sm transition-all active:scale-90"><Icons.Instagram /></div>
+                            </div>
                             <p className="mt-12 text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">© 2026 Diamengundang WCC • Tangerang</p>
                         </div>
                         <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-rose-50 rounded-full blur-[100px] opacity-60"></div>
