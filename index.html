@@ -30,7 +30,7 @@
         }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .animate-in { animation: fadeIn 0.4s ease-out; }
+        .animate-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { 
             from { opacity: 0; transform: translateY(10px); } 
             to { opacity: 1; transform: translateY(0); } 
@@ -296,7 +296,7 @@
                                         const status = getStatus(dayNum, viewMonth, viewYear);
                                         const isSelected = selectedDate.getDate() === dayNum && selectedDate.getMonth() === viewMonth && selectedDate.getFullYear() === viewYear;
                                         return (
-                                            <button key={dayNum} onClick={() => { handleDateClick(new Date(viewYear, viewMonth, dayNum)); setShowCalendarModal(false); }} disabled={status === 0} className={`aspect-square rounded-xl flex items-center justify-center text-sm font-bold transition-all relative ${status === 2 ? 'bg-red-50 text-red-500' : status === 1 ? 'bg-emerald-50 text-emerald-600' : 'text-slate-200 cursor-not-allowed'} ${isSelected ? 'ring-2 ring-rose-500 ring-offset-1 bg-rose-500 !text-white' : ''}`}>
+                                            <button key={dayNum} onClick={() => { handleDateClick(new Date(viewYear, viewMonth, dayNum)); setShowCalendarModal(false); if(status===2) setShowAlertModal(true); else setShowFormModal(true); }} disabled={status === 0} className={`aspect-square rounded-xl flex items-center justify-center text-sm font-bold transition-all relative ${status === 2 ? 'bg-red-50 text-red-500' : status === 1 ? 'bg-emerald-50 text-emerald-600' : 'text-slate-200 cursor-not-allowed'} ${isSelected ? 'ring-2 ring-rose-500 ring-offset-1 bg-rose-500 !text-white' : ''}`}>
                                                 {dayNum}
                                                 {status === 2 && <div className="absolute bottom-1 w-1 h-1 bg-red-400 rounded-full" />}
                                             </button>
@@ -323,8 +323,8 @@
                             <div className="bg-white w-full max-w-lg rounded-t-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar pb-10">
                                 <div className="flex justify-between items-start mb-6 px-1">
                                     <div>
-                                        <h3 className="text-xl sm:text-2xl font-bold text-slate-900 leading-none">Form Booking</h3>
-                                        <p className="text-rose-500 text-xs sm:text-sm font-bold uppercase tracking-widest mt-2">{formatID(selectedDate)}</p>
+                                        <h3 className="text-xl sm:text-2xl font-bold text-slate-900 leading-none tracking-tight">Form Booking</h3>
+                                        <p className="text-rose-500 text-xs sm:text-sm font-bold uppercase tracking-widest mt-2">Momen abadi menantimu</p>
                                     </div>
                                     <button onClick={() => setShowFormModal(false)} className="p-2.5 bg-slate-100 text-slate-400 rounded-full hover:bg-slate-200 transition-colors"><Icons.X /></button>
                                 </div>
@@ -356,28 +356,31 @@
                                             ))}
                                         </div>
                                     </div>
+                                    
+                                    {/* --- BAGIAN FORM DATA (VERTICAL LAYOUT) --- */}
                                     <div className="space-y-4 pt-4 border-t border-slate-100">
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Nama Pasangan</label>
-                                                <input required type="text" placeholder="Andi & Bunga" className="w-full h-12 px-4 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-xl outline-none text-sm font-bold transition-all" value={formData.namaPasangan} onChange={(e) => setFormData({...formData, namaPasangan: e.target.value})} />
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <div>
-                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Waktu</label>
-                                                    <input required type="time" className="w-full h-12 px-3 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-xl outline-none text-sm font-bold transition-all" value={formData.waktuAcara} onChange={(e) => setFormData({...formData, waktuAcara: e.target.value})} />
-                                                </div>
-                                                <div>
-                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Lokasi</label>
-                                                    <input required type="text" placeholder="Gedung" className="w-full h-12 px-4 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-xl outline-none text-sm font-bold transition-all" value={formData.lokasiAcara} onChange={(e) => setFormData({...formData, lokasiAcara: e.target.value})} />
-                                                </div>
-                                            </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Tanggal Acara</label>
+                                            <input readOnly type="text" className="w-full h-12 px-4 bg-slate-100 border-2 border-transparent rounded-xl outline-none text-sm font-bold text-slate-500 cursor-not-allowed" value={formatID(selectedDate)} />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Nama Pasangan</label>
+                                            <input required type="text" placeholder="Andi & Bunga" className="w-full h-12 px-4 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-xl outline-none text-sm font-bold transition-all shadow-sm" value={formData.namaPasangan} onChange={(e) => setFormData({...formData, namaPasangan: e.target.value})} />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Waktu</label>
+                                            <input required type="time" className="w-full h-12 px-4 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-xl outline-none text-sm font-bold transition-all shadow-sm" value={formData.waktuAcara} onChange={(e) => setFormData({...formData, waktuAcara: e.target.value})} />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Lokasi</label>
+                                            <input required type="text" placeholder="Gedung / Kota" className="w-full h-12 px-4 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-xl outline-none text-sm font-bold transition-all shadow-sm" value={formData.lokasiAcara} onChange={(e) => setFormData({...formData, lokasiAcara: e.target.value})} />
                                         </div>
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Brief Tambahan</label>
-                                            <textarea rows="2" placeholder="Link Pinterest atau catatan..." className="w-full p-4 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-xl outline-none resize-none text-sm font-bold transition-all" value={formData.brief} onChange={(e) => setFormData({...formData, brief: e.target.value})}></textarea>
+                                            <textarea rows="3" placeholder="Link Pinterest atau catatan khusus..." className="w-full p-4 bg-slate-50 border-2 border-transparent focus:border-rose-500 focus:bg-white rounded-xl outline-none resize-none text-sm font-bold transition-all shadow-sm" value={formData.brief} onChange={(e) => setFormData({...formData, brief: e.target.value})}></textarea>
                                         </div>
                                     </div>
+
                                     <button type="submit" disabled={isSubmitting} className={`w-full h-14 text-white rounded-2xl font-bold shadow-lg transition-all flex items-center justify-center gap-3 text-sm tracking-widest uppercase active:scale-95 ${isSubmitting ? 'bg-slate-400' : 'bg-rose-500 hover:bg-rose-600 shadow-rose-200'}`}>
                                         {isSubmitting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Icons.MessageCircle /> Konfirmasi Booking</>}
                                     </button>
@@ -386,7 +389,7 @@
                         </div>
                     )}
 
-                    <footer className="mt-12 py-12 px-6 border-t border-slate-100 text-center relative overflow-hidden">
+                    <footer className="mt-12 py-12 px-6 border-t border-slate-100 text-center relative overflow-hidden bg-white">
                         <div className="relative z-10 max-w-sm mx-auto">
                             <div className="flex items-center justify-center gap-2 mb-6 transition-all hover:scale-105 active:scale-95 cursor-pointer">
                                 <div className="w-8 h-8 bg-rose-500 rounded-xl flex items-center justify-center text-white rotate-3 shadow-md"><Icons.Camera /></div>
